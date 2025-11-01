@@ -2,10 +2,12 @@ const functions = require('firebase-functions');
 const { createOrganizationAdmin } = require('./createAdmin');
 const admin = require('firebase-admin');
 
-admin.initializeApp();
+// Initialize Firebase Admin only if not already initialized
+if (!admin.apps.length) {
+  admin.initializeApp();
+}
 
-// Import the createOrganizationAdmin function
-const { createOrganizationAdmin } = require('./createAdmin');
+// Export the createOrganizationAdmin function
 exports.createOrganizationAdmin = createOrganizationAdmin;
 
 const db = admin.firestore();

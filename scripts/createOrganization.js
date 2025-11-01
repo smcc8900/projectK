@@ -163,13 +163,19 @@ async function createOrganization() {
     console.log('\n🎉 SUCCESS! Organization and admin created successfully!');
     console.log('\n📧 Send these credentials to your client:');
     console.log('═══════════════════════════════════════════════════════');
-    console.log('Login URL: https://projectk-618c3.web.app/login');
+    console.log('Login URL: https://' + domain + '/login');
     console.log('Email:', adminEmail);
     console.log('Password:', adminPassword);
     console.log('Organization:', orgName);
     console.log('Type:', orgType);
     console.log('═══════════════════════════════════════════════════════');
-    console.log('\n⚠️  Admin should change password after first login\n');
+    console.log('\n⚠️  IMPORTANT NEXT STEPS:');
+    console.log('1. Add custom domain in Vercel/Firebase Hosting');
+    console.log('2. Customer must add DNS records');
+    console.log('3. After DNS propagation, login will work at: https://' + domain);
+    console.log('4. Admin should change password after first login');
+    console.log('\n⚠️  Until DNS is configured, they can temporarily test at:');
+    console.log('   https://projectk-618c3.web.app/login (for testing only)\n');
 
   } catch (error) {
     console.error('\n❌ Error:', error.message);
