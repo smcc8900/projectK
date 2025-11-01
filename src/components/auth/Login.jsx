@@ -91,16 +91,21 @@ export const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Block login if domain is not configured
-    if (domainError) {
-      toast.error('This domain is not configured. Please contact your administrator.');
-      return;
-    }
-    
     setLoading(true);
 
     try {
+      // First, check if domain is configured (if on custom domain)
+      const currentDomain = getCurrentDomain();
+      if (currentDomain && domainError) {
+        toast.error(
+          `This domain (${currentDomain}) is not configured in our system. Please contact your administrator or use your organization's correct URL.`,
+          { duration: 5000 }
+        );
+        setLoading(false);
+        return;
+      }
+
+      // Attempt login
       const userCredential = await login(email, password);
       
       // Get fresh token with claims
@@ -111,9 +116,12 @@ export const Login = () => {
       // If on custom domain, verify user belongs to this organization
       if (allowedDomain && domainOrg) {
         if (userOrgId !== domainOrg.id) {
-          // User doesn't belong to this organization
-          await userCredential.user.delete(); // Sign them out
-          toast.error(`This login is only for ${domainOrg.orgName} employees. Please use your organization's URL.`);
+          // User doesn't belong to this organization - sign them out
+          await userCredential.user.delete();
+          toast.error(
+            `Access Denied: This login portal is exclusively for ${domainOrg.orgName} employees. Please visit your organization's URL to login.`,
+            { duration: 6000 }
+          );
           setLoading(false);
           return;
         }
@@ -128,7 +136,24 @@ export const Login = () => {
         navigate('/employee/dashboard', { replace: true });
       }
     } catch (error) {
-      toast.error(error.message || 'Failed to login');
+      // Show user-friendly error messages
+      let errorMessage = 'Failed to login';
+      
+      if (error.code === 'auth/user-not-found') {
+        errorMessage = 'No account found with this email address.';
+      } else if (error.code === 'auth/wrong-password') {
+        errorMessage = 'Incorrect password. Please try again.';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = 'Invalid email address format.';
+      } else if (error.code === 'auth/user-disabled') {
+        errorMessage = 'This account has been disabled. Contact your administrator.';
+      } else if (error.code === 'auth/too-many-requests') {
+        errorMessage = 'Too many failed attempts. Please try again later.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.error(errorMessage, { duration: 5000 });
     } finally {
       setLoading(false);
     }
@@ -216,7 +241,7 @@ export const Login = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-400 text-gray-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 backdrop-blur-sm transition-all sm:text-sm"
-                  placeholder="snehithi@gmail.com"
+                  placeholder="Enter your email"
                 />
               </div>
               <div>
@@ -240,7 +265,7 @@ export const Login = () => {
             <div className="pt-2">
               <button
                 type="submit"
-                disabled={loading || !email.trim() || !password.trim() || domainError}
+                disabled={loading || !email.trim() || !password.trim()}
                 className="group relative w-full flex justify-center py-3.5 px-4 border border-transparent text-sm font-semibold rounded-xl text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
               >
                 <span className="absolute left-0 inset-y-0 flex items-center pl-4">
