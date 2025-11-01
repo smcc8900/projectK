@@ -91,6 +91,13 @@ export const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Block login if domain is not configured
+    if (domainError) {
+      toast.error('This domain is not configured. Please contact your administrator.');
+      return;
+    }
+    
     setLoading(true);
 
     try {
@@ -233,7 +240,7 @@ export const Login = () => {
             <div className="pt-2">
               <button
                 type="submit"
-                disabled={loading || !email.trim() || !password.trim()}
+                disabled={loading || !email.trim() || !password.trim() || domainError}
                 className="group relative w-full flex justify-center py-3.5 px-4 border border-transparent text-sm font-semibold rounded-xl text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
               >
                 <span className="absolute left-0 inset-y-0 flex items-center pl-4">
