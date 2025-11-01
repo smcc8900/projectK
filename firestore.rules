@@ -21,7 +21,10 @@ service cloud.firestore {
     
     // Organizations
     match /organizations/{orgId} {
-      allow read: if isAuthenticated() && belongsToOrg(orgId);
+      // Allow public read for domain-based organization lookup (before login)
+      // This is needed for the login page to detect which org the domain belongs to
+      allow read: if true;
+      // Only admins can write
       allow write: if isAdmin() && belongsToOrg(orgId);
     }
     
