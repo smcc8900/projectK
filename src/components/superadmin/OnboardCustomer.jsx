@@ -3,7 +3,7 @@ import { Building2, Mail, Lock, User, Globe, CheckCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 
-export const OnboardCustomer = () => {
+export const OnboardCustomer = ({ onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     orgName: '',
@@ -39,6 +39,11 @@ export const OnboardCustomer = () => {
 
       setResult(response.data);
       toast.success('Customer onboarded successfully!');
+      
+      // Call onSuccess callback if provided
+      if (onSuccess) {
+        onSuccess();
+      }
       
       // Reset form
       setFormData({

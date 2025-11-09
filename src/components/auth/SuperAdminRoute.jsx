@@ -2,7 +2,7 @@ import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
-export const RoleBasedRedirect = () => {
+export const SuperAdminRoute = ({ children }) => {
   const { currentUser, userClaims, loading } = useAuth();
 
   if (loading) {
@@ -17,15 +17,16 @@ export const RoleBasedRedirect = () => {
   }
 
   if (!currentUser) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" />;
   }
 
-  // Redirect based on role
-  if (userClaims?.role === 'superadmin') {
-    return <Navigate to="/superadmin/dashboard" replace />;
-  } else if (userClaims?.role === 'admin') {
-    return <Navigate to="/admin/dashboard" replace />;
-  } else {
-    return <Navigate to="/employee/dashboard" replace />;
+  if (userClaims?.role !== 'superadmin') {
+    // Redirect based on their actual role
+    if (userClaims?.role === 'admin') {
+      return <Navigate to="/admin/dashboard" />;
+    }
+    return <Navigate to="/employee/dashboard" />;
   }
+
+  return children;
 };

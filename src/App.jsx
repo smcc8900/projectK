@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './contexts/AuthContext';
 import { SidebarProvider } from './contexts/SidebarContext';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
+import { SuperAdminRoute } from './components/auth/SuperAdminRoute';
 import { RoleBasedRedirect } from './components/auth/RoleBasedRedirect';
 import { Login } from './components/auth/Login';
 import { Navbar } from './components/common/Navbar';
@@ -27,6 +28,9 @@ import { Timetable } from './components/employee/Timetable';
 import { LeaveManagement as EmployeeLeaveManagement } from './components/employee/LeaveManagement';
 import { Colleagues } from './components/employee/Colleagues';
 import { MyAttendance } from './components/employee/MyAttendance';
+
+// Super Admin Components
+import { SuperAdminDashboard } from './components/superadmin/SuperAdminDashboard';
 
 const AppLayout = ({ children }) => {
   return (
@@ -61,6 +65,16 @@ function App() {
           <Routes>
           {/* Public Routes */}
           <Route path="/login" element={<Login />} />
+
+          {/* Super Admin Routes */}
+          <Route
+            path="/superadmin/dashboard"
+            element={
+              <SuperAdminRoute>
+                <SuperAdminDashboard />
+              </SuperAdminRoute>
+            }
+          />
 
           {/* Admin Routes */}
           <Route

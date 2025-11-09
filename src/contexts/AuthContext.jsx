@@ -95,6 +95,10 @@ export const AuthProvider = ({ children }) => {
     return userClaims?.role === 'employee';
   };
 
+  const isSuperAdmin = () => {
+    return userClaims?.role === 'superadmin';
+  };
+
   const refreshOrganization = async () => {
     if (userClaims?.orgId) {
       try {
@@ -152,6 +156,7 @@ export const AuthProvider = ({ children }) => {
     refreshOrganization,
     isAdmin,
     isEmployee,
+    isSuperAdmin,
     hasFeature,
     getFeatures,
   };
