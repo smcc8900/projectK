@@ -101,6 +101,24 @@ service cloud.firestore {
       allow delete: if isAdmin() && 
                        belongsToOrg(resource.data.organizationId);
     }
+    
+    // Attendance
+    match /attendance/{attendanceId} {
+      // Employees can create their own attendance records (check-in)
+      allow create: if isAuthenticated() && 
+                       belongsToOrg(request.resource.data.orgId) &&
+                       request.auth.uid == request.resource.data.userId;
+      // Employees can read their own attendance, admins can read all in their org
+      allow read: if isAuthenticated() && 
+                     belongsToOrg(resource.data.orgId) &&
+                     (isAdmin() || request.auth.uid == resource.data.userId);
+      // Employees can update their own attendance (check-out), admins can update any
+      allow update: if isAuthenticated() && 
+                       belongsToOrg(resource.data.orgId) &&
+                       (isAdmin() || request.auth.uid == resource.data.userId);
+      // Only admins can delete attendance records
+      allow delete: if isAdmin() && belongsToOrg(resource.data.orgId);
+    }
   }
 }
 

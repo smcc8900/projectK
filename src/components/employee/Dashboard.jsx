@@ -4,6 +4,7 @@ import { getPayslips } from '../../services/payslip.service';
 import { DollarSign, FileText, TrendingUp, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
+import { AttendanceWidget } from './AttendanceWidget';
 
 export const Dashboard = () => {
   const { currentUser, userClaims } = useAuth();
@@ -88,6 +89,9 @@ export const Dashboard = () => {
         <h1 className="text-2xl font-bold text-gray-900">Employee Dashboard</h1>
         <p className="text-gray-600">Welcome back, {currentUser?.displayName || currentUser?.email}!</p>
       </div>
+
+      {/* Attendance Widget */}
+      <AttendanceWidget />
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">

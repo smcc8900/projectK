@@ -3,14 +3,14 @@ import { useAuth } from '../../contexts/AuthContext';
 import { updateOrganizationName, getOrganization } from '../../services/organization.service';
 import { getLeavePolicy, updateLeavePolicy, updateAllEmployeeLeaves } from '../../services/leavePolicy.service';
 import toast from 'react-hot-toast';
-import { Settings, Save, Calendar, Users, AlertCircle } from 'lucide-react';
+import { Settings, Save, Calendar, Users, AlertCircle, MapPin } from 'lucide-react';
 
 export const OrganizationSettings = () => {
   const { userClaims, organization, refreshOrganization } = useAuth();
   const [orgName, setOrgName] = useState('');
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('general'); // 'general' or 'leaves'
+  const [activeTab, setActiveTab] = useState('general'); // 'general', 'leaves', or 'geofencing'
   
   // Leave policy state
   const [leavePolicy, setLeavePolicy] = useState({
@@ -22,6 +22,16 @@ export const OrganizationSettings = () => {
   });
   const [leavePolicyLoading, setLeavePolicyLoading] = useState(false);
   const [applyToAllLoading, setApplyToAllLoading] = useState(false);
+  
+  // Geofencing state
+  const [geofenceLocation, setGeofenceLocation] = useState({
+    latitude: '',
+    longitude: '',
+    radius: 50, // default 50 meters
+    address: '',
+  });
+  const [geofenceLoading, setGeofenceLoading] = useState(false);
+  const [detectingLocation, setDetectingLocation] = useState(false);
 
   useEffect(() => {
     const loadOrganization = async () => {
@@ -43,6 +53,16 @@ export const OrganizationSettings = () => {
           maternityLeave: policy.maternityLeave || 90,
           paternityLeave: policy.paternityLeave || 15,
         });
+        
+        // Load geofencing location
+        if (org.geofenceLocation) {
+          setGeofenceLocation({
+            latitude: org.geofenceLocation.latitude || '',
+            longitude: org.geofenceLocation.longitude || '',
+            radius: org.geofenceLocation.radius || 50,
+            address: org.geofenceLocation.address || '',
+          });
+        }
       } catch (error) {
         console.error('Error loading organization:', error);
         toast.error('Failed to load organization settings');
@@ -140,6 +160,81 @@ export const OrganizationSettings = () => {
     }
   };
 
+  const handleDetectLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocation is not supported by your browser');
+      return;
+    }
+
+    setDetectingLocation(true);
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setGeofenceLocation({
+          ...geofenceLocation,
+          latitude: position.coords.latitude.toString(),
+          longitude: position.coords.longitude.toString(),
+        });
+        setDetectingLocation(false);
+        toast.success('Location detected successfully!');
+      },
+      (error) => {
+        console.error('Error detecting location:', error);
+        toast.error('Failed to detect location. Please enter manually.');
+        setDetectingLocation(false);
+      }
+    );
+  };
+
+  const handleGeofenceSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!userClaims?.orgId) {
+      toast.error('Organization ID not found');
+      return;
+    }
+
+    // Validate coordinates
+    if (!geofenceLocation.latitude || !geofenceLocation.longitude) {
+      toast.error('Please provide latitude and longitude');
+      return;
+    }
+
+    const lat = parseFloat(geofenceLocation.latitude);
+    const lng = parseFloat(geofenceLocation.longitude);
+
+    if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      toast.error('Invalid coordinates. Latitude must be between -90 and 90, longitude between -180 and 180');
+      return;
+    }
+
+    if (geofenceLocation.radius < 10 || geofenceLocation.radius > 1000) {
+      toast.error('Radius must be between 10 and 1000 meters');
+      return;
+    }
+
+    setGeofenceLoading(true);
+
+    try {
+      const { updateOrganization } = await import('../../services/organization.service');
+      await updateOrganization(userClaims.orgId, {
+        geofenceLocation: {
+          latitude: lat,
+          longitude: lng,
+          radius: geofenceLocation.radius,
+          address: geofenceLocation.address.trim(),
+        },
+      });
+      await refreshOrganization();
+      toast.success('Geofencing location updated successfully!');
+    } catch (error) {
+      console.error('Error updating geofencing location:', error);
+      toast.error(error.message || 'Failed to update geofencing location');
+    } finally {
+      setGeofenceLoading(false);
+    }
+  };
+
   if (initialLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -182,6 +277,17 @@ export const OrganizationSettings = () => {
           >
             <Calendar className="w-4 h-4" />
             <span>Leave Policy</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('geofencing')}
+            className={`${
+              activeTab === 'geofencing'
+                ? 'border-primary-500 text-primary-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center space-x-2`}
+          >
+            <MapPin className="w-4 h-4" />
+            <span>Geofencing</span>
           </button>
         </nav>
       </div>
@@ -389,6 +495,128 @@ export const OrganizationSettings = () => {
                   Applying the leave policy to all employees will update their leave balances immediately.
                   This action cannot be undone. Make sure to save the leave policy first before applying it to employees.
                 </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Geofencing Tab */}
+      {activeTab === 'geofencing' && (
+        <div className="space-y-6">
+          <div className="bg-white rounded-lg shadow p-6">
+            <form onSubmit={handleGeofenceSubmit} className="space-y-6">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Attendance Geofencing</h2>
+                <p className="text-sm text-gray-500 mb-6">
+                  Set the office location for attendance check-in/check-out. Employees must be within the specified radius to mark attendance.
+                </p>
+
+                <div className="space-y-6">
+                  <div>
+                    <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-2">
+                      Office Address (Optional)
+                    </label>
+                    <input
+                      id="address"
+                      type="text"
+                      value={geofenceLocation.address}
+                      onChange={(e) => setGeofenceLocation({ ...geofenceLocation, address: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                      placeholder="e.g., 123 Main St, City, State"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label htmlFor="latitude" className="block text-sm font-medium text-gray-700 mb-2">
+                        Latitude <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        id="latitude"
+                        type="text"
+                        value={geofenceLocation.latitude}
+                        onChange={(e) => setGeofenceLocation({ ...geofenceLocation, latitude: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                        placeholder="e.g., 37.7749"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="longitude" className="block text-sm font-medium text-gray-700 mb-2">
+                        Longitude <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        id="longitude"
+                        type="text"
+                        value={geofenceLocation.longitude}
+                        onChange={(e) => setGeofenceLocation({ ...geofenceLocation, longitude: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                        placeholder="e.g., -122.4194"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <button
+                      type="button"
+                      onClick={handleDetectLocation}
+                      disabled={detectingLocation}
+                      className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <MapPin className="w-4 h-4 mr-2" />
+                      {detectingLocation ? 'Detecting...' : 'Detect Current Location'}
+                    </button>
+                  </div>
+
+                  <div>
+                    <label htmlFor="radius" className="block text-sm font-medium text-gray-700 mb-2">
+                      Radius (meters) <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="radius"
+                      type="number"
+                      min="10"
+                      max="1000"
+                      value={geofenceLocation.radius}
+                      onChange={(e) => setGeofenceLocation({ ...geofenceLocation, radius: parseInt(e.target.value) || 50 })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                      required
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Employees must be within {geofenceLocation.radius} meters of the office location to check in/out
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3">
+                <button
+                  type="submit"
+                  disabled={geofenceLoading}
+                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  {geofenceLoading ? 'Saving...' : 'Save Geofencing Settings'}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Info Box */}
+          <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded">
+            <div className="flex items-start">
+              <AlertCircle className="w-5 h-5 text-blue-400 mt-0.5 mr-3" />
+              <div>
+                <h3 className="text-sm font-medium text-blue-800">How to use Geofencing</h3>
+                <ul className="text-sm text-blue-700 mt-2 space-y-1 list-disc list-inside">
+                  <li>Click "Detect Current Location" if you're at the office to automatically fill coordinates</li>
+                  <li>Or manually enter the latitude and longitude of your office location</li>
+                  <li>Set the radius to define the check-in area (recommended: 50-100 meters)</li>
+                  <li>Employees will see check-in/check-out buttons on their dashboard when within range</li>
+                </ul>
               </div>
             </div>
           </div>

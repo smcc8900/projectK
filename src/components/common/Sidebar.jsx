@@ -12,7 +12,8 @@ import {
   Calendar,
   ClipboardList,
   UserCheck,
-  CalendarCheck
+  CalendarCheck,
+  Clock
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -27,6 +28,7 @@ export const Sidebar = () => {
     { to: '/admin/history', icon: History, label: 'Upload History', feature: 'payslips' },
     { to: '/admin/timetable', icon: Calendar, label: 'Manage Timetable', feature: 'timetable' },
     { to: '/admin/leave-management', icon: ClipboardList, label: 'Leave Management', feature: 'leaves' },
+    { to: '/admin/attendance', icon: Clock, label: 'Attendance', feature: null },
     { to: '/employee/payslips', icon: FileText, label: 'My Payslips', feature: 'payslips' },
     { to: '/admin/settings', icon: Settings, label: 'Organization Settings', feature: null },
   ];
@@ -34,6 +36,7 @@ export const Sidebar = () => {
   const employeeLinks = [
     { to: '/employee/dashboard', icon: LayoutDashboard, label: 'Dashboard', feature: null },
     { to: '/employee/payslips', icon: Wallet, label: 'My Payslips', feature: 'payslips' },
+    { to: '/employee/attendance', icon: Clock, label: 'My Attendance', feature: null },
     { to: '/employee/timetable', icon: Calendar, label: 'Timetable', feature: 'timetable' },
     { to: '/employee/leaves', icon: CalendarCheck, label: 'Leave Management', feature: 'leaves' },
     { to: '/employee/colleagues', icon: UserCheck, label: 'Colleagues', feature: 'colleagues' },

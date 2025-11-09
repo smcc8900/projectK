@@ -17,6 +17,7 @@ import { UploadHistory } from './components/admin/UploadHistory';
 import { OrganizationSettings } from './components/admin/OrganizationSettings';
 import { TimetableManagement } from './components/admin/TimetableManagement';
 import { LeaveManagement } from './components/admin/LeaveManagement';
+import { AttendanceManagement } from './components/admin/AttendanceManagement';
 
 // Employee Components (also used by admins for their own payslips)
 import { Dashboard as EmployeeDashboard } from './components/employee/Dashboard';
@@ -25,6 +26,7 @@ import { Profile } from './components/employee/Profile';
 import { Timetable } from './components/employee/Timetable';
 import { LeaveManagement as EmployeeLeaveManagement } from './components/employee/LeaveManagement';
 import { Colleagues } from './components/employee/Colleagues';
+import { MyAttendance } from './components/employee/MyAttendance';
 
 const AppLayout = ({ children }) => {
   return (
@@ -131,6 +133,16 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/admin/attendance"
+            element={
+              <ProtectedRoute requireAdmin>
+                <AppLayout>
+                  <AttendanceManagement />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
 
           {/* Employee Routes */}
           <Route
@@ -189,6 +201,16 @@ function App() {
               <ProtectedRoute>
                 <AppLayout>
                   <Profile />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/employee/attendance"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <MyAttendance />
                 </AppLayout>
               </ProtectedRoute>
             }

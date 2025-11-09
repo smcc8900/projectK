@@ -1,5 +1,6 @@
 const functions = require('firebase-functions');
 const { createOrganizationAdmin } = require('./createAdmin');
+const { sendEmail } = require('./emailService');
 const admin = require('firebase-admin');
 
 // Initialize Firebase Admin only if not already initialized
@@ -194,30 +195,84 @@ exports.deleteUser = functions.region('us-central1').https.onCall(async (data, c
 
 /**
  * Trigger: When a new user is created in Firestore, send welcome email
- * (Optional - can be expanded with SendGrid or similar)
  */
 exports.onUserCreated = functions.firestore
   .document('users/{userId}')
   .onCreate(async (snap, context) => {
     const userData = snap.data();
+    const userId = context.params.userId;
     
-    // TODO: Send welcome email using SendGrid, Mailgun, etc.
-    console.log(`New user created: ${userData.email}`);
+    try {
+      // Get organization name if available
+      let organizationName = 'the Team';
+      if (userData.orgId) {
+        const orgDoc = await db.collection('organizations').doc(userData.orgId).get();
+        if (orgDoc.exists) {
+          organizationName = orgDoc.data().name || 'the Team';
+        }
+      }
+      
+      const employeeName = userData.profile 
+        ? `${userData.profile.firstName} ${userData.profile.lastName}`
+        : userData.email.split('@')[0];
+      
+      // Send welcome email
+      await sendEmail(
+        userData.email,
+        'welcomeEmail',
+        {
+          employeeName,
+          email: userData.email,
+          role: userData.role || 'Employee',
+          organizationName
+        }
+      );
+      
+      console.log(`Welcome email sent to: ${userData.email}`);
+    } catch (error) {
+      console.error('Error sending welcome email:', error);
+    }
     
     return null;
   });
 
 /**
  * Trigger: When payslips are created, notify employees
- * (Optional - can be expanded with email notifications)
  */
 exports.onPayslipCreated = functions.firestore
   .document('payslips/{payslipId}')
   .onCreate(async (snap, context) => {
     const payslipData = snap.data();
+    const payslipId = context.params.payslipId;
     
-    // TODO: Send payslip notification email
-    console.log(`New payslip created for user: ${payslipData.userId}`);
+    try {
+      // Get employee details
+      const employeeDoc = await db.collection('users').doc(payslipData.userId).get();
+      if (!employeeDoc.exists) {
+        console.log(`User not found for payslip: ${payslipId}`);
+        return null;
+      }
+      
+      const employeeData = employeeDoc.data();
+      const employeeName = employeeData.profile 
+        ? `${employeeData.profile.firstName} ${employeeData.profile.lastName}`
+        : employeeData.email.split('@')[0];
+      
+      // Send payslip notification email
+      await sendEmail(
+        employeeData.email,
+        'payslipNotification',
+        {
+          employeeName,
+          month: payslipData.month || 'Current Month',
+          netSalary: payslipData.netSalary || payslipData.totalEarnings - payslipData.totalDeductions
+        }
+      );
+      
+      console.log(`Payslip notification sent to: ${employeeData.email}`);
+    } catch (error) {
+      console.error('Error sending payslip notification:', error);
+    }
     
     return null;
   });
@@ -251,36 +306,40 @@ exports.onLeaveRequestCreated = functions.firestore
       const startDate = new Date(leaveRequest.startDate).toLocaleDateString();
       const endDate = new Date(leaveRequest.endDate).toLocaleDateString();
       
-      // Log notification (In production, send actual emails using SendGrid, Mailgun, etc.)
-      console.log('=== LEAVE REQUEST NOTIFICATION ===');
-      console.log(`To: ${adminEmails.join(', ')}`);
-      console.log(`Subject: New Leave Request from ${employeeName}`);
-      console.log(`Body:`);
-      console.log(`Employee: ${employeeName} (${leaveRequest.userEmail})`);
-      console.log(`Leave Type: ${leaveRequest.leaveType}`);
-      console.log(`Duration: ${startDate} to ${endDate} (${leaveRequest.days} days)`);
-      console.log(`Reason: ${leaveRequest.reason}`);
-      console.log(`Status: ${leaveRequest.status}`);
-      console.log(`Request ID: ${requestId}`);
-      console.log('===================================');
+      // Format leave type for display
+      const leaveTypeMap = {
+        annual: 'Annual Leave',
+        sick: 'Sick Leave',
+        casual: 'Casual Leave',
+        maternity: 'Maternity Leave',
+        paternity: 'Paternity Leave',
+        emergency: 'Emergency Leave'
+      };
+      const formattedLeaveType = leaveTypeMap[leaveRequest.leaveType] || leaveRequest.leaveType;
       
-      // TODO: Integrate with email service
-      // Example with SendGrid:
-      // const msg = {
-      //   to: adminEmails,
-      //   from: 'noreply@yourcompany.com',
-      //   subject: `New Leave Request from ${employeeName}`,
-      //   html: `
-      //     <h2>New Leave Request</h2>
-      //     <p><strong>Employee:</strong> ${employeeName}</p>
-      //     <p><strong>Email:</strong> ${leaveRequest.userEmail}</p>
-      //     <p><strong>Leave Type:</strong> ${leaveRequest.leaveType}</p>
-      //     <p><strong>Duration:</strong> ${startDate} to ${endDate} (${leaveRequest.days} days)</p>
-      //     <p><strong>Reason:</strong> ${leaveRequest.reason}</p>
-      //     <p><strong>Status:</strong> ${leaveRequest.status}</p>
-      //   `
-      // };
-      // await sgMail.send(msg);
+      // Send email notification to all admins
+      if (adminEmails.length > 0) {
+        await sendEmail(
+          adminEmails,
+          'leaveRequestToAdmin',
+          {
+            employeeName,
+            employeeEmail: leaveRequest.userEmail,
+            leaveType: formattedLeaveType,
+            startDate,
+            endDate,
+            days: leaveRequest.days,
+            reason: leaveRequest.reason,
+            status: leaveRequest.status,
+            emergencyContact: leaveRequest.emergencyContact,
+            requestId
+          }
+        );
+        
+        console.log(`Leave request notification sent to ${adminEmails.length} admin(s)`);
+      } else {
+        console.log('No admins found to notify');
+      }
       
     } catch (error) {
       console.error('Error sending leave request notification:', error);
@@ -316,51 +375,37 @@ exports.onLeaveRequestUpdated = functions.firestore
       const startDate = new Date(afterData.startDate).toLocaleDateString();
       const endDate = new Date(afterData.endDate).toLocaleDateString();
       
-      // Determine status message
-      let statusMessage = '';
-      let statusColor = '';
-      if (afterData.status === 'approved') {
-        statusMessage = 'APPROVED';
-        statusColor = 'green';
-      } else if (afterData.status === 'rejected') {
-        statusMessage = 'REJECTED';
-        statusColor = 'red';
-      } else {
-        statusMessage = afterData.status.toUpperCase();
-        statusColor = 'gray';
-      }
+      // Format leave type for display
+      const leaveTypeMap = {
+        annual: 'Annual Leave',
+        sick: 'Sick Leave',
+        casual: 'Casual Leave',
+        maternity: 'Maternity Leave',
+        paternity: 'Paternity Leave',
+        emergency: 'Emergency Leave'
+      };
+      const formattedLeaveType = leaveTypeMap[afterData.leaveType] || afterData.leaveType;
       
-      // Log notification (In production, send actual emails)
-      console.log('=== LEAVE REQUEST STATUS UPDATE ===');
-      console.log(`To: ${afterData.userEmail}`);
-      console.log(`Subject: Leave Request ${statusMessage}`);
-      console.log(`Body:`);
-      console.log(`Dear ${employeeName},`);
-      console.log(`Your leave request has been ${statusMessage}.`);
-      console.log(`Leave Type: ${afterData.leaveType}`);
-      console.log(`Duration: ${startDate} to ${endDate} (${afterData.days} days)`);
-      if (afterData.adminComment) {
-        console.log(`Admin Comment: ${afterData.adminComment}`);
-      }
-      console.log(`Request ID: ${requestId}`);
-      console.log('====================================');
+      // Send appropriate email based on status
+      const templateType = afterData.status === 'approved' 
+        ? 'leaveApprovedToEmployee' 
+        : 'leaveRejectedToEmployee';
       
-      // TODO: Integrate with email service
-      // Example with SendGrid:
-      // const msg = {
-      //   to: afterData.userEmail,
-      //   from: 'noreply@yourcompany.com',
-      //   subject: `Leave Request ${statusMessage}`,
-      //   html: `
-      //     <h2>Leave Request ${statusMessage}</h2>
-      //     <p>Dear ${employeeName},</p>
-      //     <p>Your leave request has been <strong style="color: ${statusColor}">${statusMessage}</strong>.</p>
-      //     <p><strong>Leave Type:</strong> ${afterData.leaveType}</p>
-      //     <p><strong>Duration:</strong> ${startDate} to ${endDate} (${afterData.days} days)</p>
-      //     ${afterData.adminComment ? `<p><strong>Admin Comment:</strong> ${afterData.adminComment}</p>` : ''}
-      //   `
-      // };
-      // await sgMail.send(msg);
+      await sendEmail(
+        afterData.userEmail,
+        templateType,
+        {
+          employeeName,
+          leaveType: formattedLeaveType,
+          startDate,
+          endDate,
+          days: afterData.days,
+          adminComment: afterData.adminComment,
+          requestId
+        }
+      );
+      
+      console.log(`Leave status notification sent to: ${afterData.userEmail}`);
       
     } catch (error) {
       console.error('Error sending leave status notification:', error);

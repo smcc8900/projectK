@@ -1,14 +1,16 @@
 # Email Notification Setup Guide
 
-This guide explains how to set up email notifications for leave requests in your application.
+This guide explains how to set up email notifications for your HR Management System.
 
 ## Current Implementation
 
-The Cloud Functions are already set up to trigger email notifications:
-- **When a leave is requested**: Admins receive an email notification
-- **When a leave is approved/rejected**: The employee receives an email notification
+The Cloud Functions are fully integrated with an email service and will trigger notifications for:
+- ✅ **Leave Requests**: Admins receive notifications when employees apply for leave
+- ✅ **Leave Approvals/Rejections**: Employees receive notifications when their leave is approved or rejected
+- ✅ **New User Creation**: Welcome emails are sent to new employees
+- ✅ **Payslip Generation**: Employees receive notifications when payslips are available
 
-Currently, the functions **log the email content to the console** instead of sending actual emails. This is useful for development and testing.
+**Default Behavior**: Without SendGrid configuration, emails are logged to the console for development/testing.
 
 ## Viewing Email Notifications (Development)
 
@@ -28,11 +30,45 @@ To see the email notifications in development:
 
 3. When a leave request is created or updated, you'll see the email content in the logs.
 
+## Email Templates Included
+
+The system includes professionally designed HTML email templates:
+
+1. **Leave Request Notification** (to Admins)
+   - Employee details and contact information
+   - Leave type, duration, and number of days
+   - Reason for leave
+   - Emergency contact (if provided)
+   - Request ID for tracking
+
+2. **Leave Approved Notification** (to Employee)
+   - Confirmation of approval
+   - Leave details summary
+   - Admin comments (if any)
+   - Reminder to complete pending work
+
+3. **Leave Rejected Notification** (to Employee)
+   - Rejection notice
+   - Leave details
+   - Reason for rejection
+   - Next steps guidance
+
+4. **Welcome Email** (to New Employees)
+   - Welcome message with organization name
+   - User credentials and role
+   - Getting started checklist
+   - HR contact information
+
+5. **Payslip Notification** (to Employees)
+   - Payslip availability notice
+   - Period and net salary
+   - Link to portal (implied)
+
 ## Setting Up Real Email Delivery (Production)
 
-To send actual emails, you need to integrate an email service. Here are the most popular options:
+To send actual emails, you need to configure SendGrid. The system is already integrated and ready to use.
 
-### Option 1: SendGrid (Recommended)
+### SendGrid Setup (Recommended)
 
 1. **Sign up for SendGrid**:
    - Go to https://sendgrid.com/
@@ -44,40 +80,37 @@ To send actual emails, you need to integrate an email service. Here are the most
    - Create a new API key with "Mail Send" permissions
    - Copy the API key
 
-3. **Install SendGrid in Functions**:
+3. **Install Dependencies** (if not already installed):
    ```bash
    cd functions
-   npm install @sendgrid/mail
+   npm install
    ```
 
-4. **Set Environment Variable**:
+4. **Set Environment Variables**:
    ```bash
    firebase functions:config:set sendgrid.key="YOUR_SENDGRID_API_KEY"
    firebase functions:config:set email.from="noreply@yourdomain.com"
    ```
-
-5. **Update functions/src/index.js**:
    
-   Add at the top of the file:
-   ```javascript
-   const sgMail = require('@sendgrid/mail');
-   const sendgridKey = functions.config().sendgrid?.key;
-   if (sendgridKey) {
-     sgMail.setApiKey(sendgridKey);
-   }
-   const fromEmail = functions.config().email?.from || 'noreply@example.com';
-   ```
+   Replace:
+   - `YOUR_SENDGRID_API_KEY` with your actual SendGrid API key
+   - `noreply@yourdomain.com` with your verified sender email
 
-   Then uncomment the SendGrid code blocks in:
-   - `onLeaveRequestCreated` function (lines 264-280)
-   - `onLeaveRequestUpdated` function (lines 345-360)
-
-6. **Deploy**:
+5. **Deploy the Functions**:
    ```bash
    firebase deploy --only functions
    ```
 
-### Option 2: Nodemailer with Gmail
+6. **Test the Email System**:
+   - Create a test leave request
+   - Check that emails are sent (not just logged)
+   - Verify emails arrive in inbox (check spam folder initially)
+
+**That's it!** The email service is already integrated. Once you configure SendGrid, emails will be sent automatically.
+
+### Alternative: Nodemailer with Gmail (Not Recommended for Production)
+
+If you prefer to use Gmail instead of SendGrid:
 
 1. **Install Nodemailer**:
    ```bash
@@ -85,112 +118,92 @@ To send actual emails, you need to integrate an email service. Here are the most
    npm install nodemailer
    ```
 
-2. **Set up Gmail App Password**:
-   - Go to your Google Account settings
-   - Enable 2-factor authentication
-   - Generate an App Password for "Mail"
+2. **Modify `functions/src/emailService.js`**:
+   Replace the SendGrid implementation with Nodemailer (see Nodemailer documentation)
 
-3. **Set Environment Variables**:
-   ```bash
-   firebase functions:config:set gmail.email="your-email@gmail.com"
-   firebase functions:config:set gmail.password="your-app-password"
-   ```
-
-4. **Update functions/src/index.js**:
-   
-   Add at the top:
-   ```javascript
-   const nodemailer = require('nodemailer');
-   
-   const transporter = nodemailer.createTransport({
-     service: 'gmail',
-     auth: {
-       user: functions.config().gmail?.email,
-       pass: functions.config().gmail?.password
-     }
-   });
-   ```
-
-   Replace the SendGrid code with Nodemailer:
-   ```javascript
-   const mailOptions = {
-     from: functions.config().gmail?.email,
-     to: adminEmails.join(','),
-     subject: `New Leave Request from ${employeeName}`,
-     html: `...` // Use the HTML from the SendGrid example
-   };
-   
-   await transporter.sendMail(mailOptions);
-   ```
-
-### Option 3: Mailgun
-
-1. **Sign up for Mailgun**:
-   - Go to https://www.mailgun.com/
-   - Create account and verify domain
-
-2. **Install Mailgun**:
-   ```bash
-   cd functions
-   npm install mailgun-js
-   ```
-
-3. **Set Environment Variables**:
-   ```bash
-   firebase functions:config:set mailgun.key="YOUR_MAILGUN_API_KEY"
-   firebase functions:config:set mailgun.domain="YOUR_MAILGUN_DOMAIN"
-   ```
-
-4. **Update functions/src/index.js** with Mailgun implementation
+**Note**: Gmail has daily sending limits (~500 emails/day) and is not recommended for production use.
 
 ## Testing Email Notifications
 
-1. **Deploy the updated functions**:
+### Without SendGrid (Development Mode)
+1. **Deploy the functions**:
    ```bash
+   cd functions
+   npm install
    firebase deploy --only functions
    ```
 
-2. **Test leave request**:
+2. **Trigger an event** (e.g., create a leave request)
+
+3. **View logs**:
+   ```bash
+   firebase functions:log
+   ```
+   You'll see formatted email content in the console
+
+### With SendGrid (Production Mode)
+1. **Configure SendGrid** (see setup steps above)
+
+2. **Test Leave Request Flow**:
    - Log in as an employee
    - Submit a leave request
-   - Check admin email inbox
+   - Check admin email inbox for notification
 
-3. **Test approval notification**:
+3. **Test Approval/Rejection Flow**:
    - Log in as admin
-   - Approve/reject a leave request
+   - Approve or reject a leave request
+   - Check employee email inbox for notification
+
+4. **Test Welcome Email**:
+   - Create a new employee account
+   - Check the new employee's email inbox
+
+5. **Test Payslip Notification**:
+   - Generate a payslip for an employee
    - Check employee email inbox
 
 ## Troubleshooting
 
 ### Emails not sending
-- Check Firebase Functions logs: `firebase functions:log`
-- Verify API keys are set correctly: `firebase functions:config:get`
-- Check email service quotas (SendGrid free tier: 100/day)
+- **Check logs**: `firebase functions:log`
+- **Verify config**: `firebase functions:config:get`
+- **Check SendGrid dashboard** for delivery status
+- **Verify sender email** is verified in SendGrid
+- **Check quotas**: SendGrid free tier allows 100 emails/day
 
 ### Permission errors
 - Ensure Firestore rules are deployed: `firebase deploy --only firestore:rules`
-- Check that users have proper authentication tokens
+- Check that Cloud Functions have proper permissions
+- Verify user authentication tokens
 
-### Email in spam
-- Set up SPF, DKIM, and DMARC records for your domain
-- Use a verified sender email address
-- Avoid spam trigger words in subject lines
+### Emails going to spam
+- **Verify sender domain** in SendGrid
+- **Set up SPF, DKIM, and DMARC** records for your domain
+- **Use professional sender email** (not gmail.com)
+- **Avoid spam trigger words** in subject lines
+- **Test with different email providers** (Gmail, Outlook, etc.)
 
-## Email Templates
+### Function deployment errors
+- Ensure Node.js version 20 is specified in `functions/package.json`
+- Run `npm install` in the functions directory
+- Check for syntax errors in the code
+- Verify Firebase project is properly initialized
 
-You can customize the email templates in the Cloud Functions. The current templates include:
+## Customizing Email Templates
 
-**Leave Request Notification (to Admin)**:
-- Employee name and email
-- Leave type
-- Duration and number of days
-- Reason for leave
-- Request ID
+Email templates are located in `functions/src/emailService.js`. To customize:
 
-**Leave Status Notification (to Employee)**:
-- Approval/rejection status
-- Leave details
-- Admin comments (if any)
+1. **Edit the template HTML** in the `getEmailTemplate` function
+2. **Modify styling** in the `<style>` section
+3. **Add new templates** by adding new cases to the templates object
+4. **Test changes** by deploying and triggering events
+
+**Available Templates**:
+- `leaveRequestToAdmin` - Sent when employee applies for leave
+- `leaveApprovedToEmployee` - Sent when leave is approved
+- `leaveRejectedToEmployee` - Sent when leave is rejected
+- `welcomeEmail` - Sent to new employees
+- `payslipNotification` - Sent when payslip is generated
 
 ## Cost Considerations
 

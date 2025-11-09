@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
+    "@sendgrid/mail": "^8.1.6",
     "date-fns": "^3.0.0",
     "firebase": "^10.7.1",
     "jspdf": "^2.5.1",
