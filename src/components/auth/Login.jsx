@@ -20,7 +20,7 @@ export const Login = () => {
   const [domainError, setDomainError] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { refreshClaims, isAdmin, organization } = useAuth();
+  const { refreshClaims, isAdmin, organization, logout } = useAuth();
 
   // Check if on custom domain and restrict access
   useEffect(() => {
@@ -115,10 +115,11 @@ export const Login = () => {
       const userOrgId = idTokenResult.claims.orgId;
       
       // If on custom domain, verify user belongs to this organization
-      if (allowedDomain && domainOrg) {
+      // Exception: Super admins can login from any domain
+      if (allowedDomain && domainOrg && userRole !== 'superadmin') {
         if (userOrgId !== domainOrg.id) {
-          // User doesn't belong to this organization - sign them out
-          await userCredential.user.delete();
+          // User doesn't belong to this organization - sign them out (don't delete!)
+          await logout();
           toast.error(
             `Access Denied: This login portal is exclusively for ${domainOrg.orgName} employees. Please visit your organization's URL to login.`,
             { duration: 6000 }
@@ -131,7 +132,9 @@ export const Login = () => {
       toast.success('Login successful!');
       
       // Redirect based on role from fresh token
-      if (userRole === 'admin') {
+      if (userRole === 'superadmin') {
+        navigate('/superadmin/dashboard', { replace: true });
+      } else if (userRole === 'admin') {
         navigate('/admin/dashboard', { replace: true });
       } else {
         navigate('/employee/dashboard', { replace: true });

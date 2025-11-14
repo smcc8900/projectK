@@ -9,13 +9,16 @@ import {
   Search,
   MoreVertical,
   CheckCircle,
-  XCircle
+  XCircle,
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { 
   getAllOrganizations, 
   getOrganizationStats,
-  getUserCountByOrg 
+  getUserCountByOrg,
+  deleteOrganization
 } from '../../services/superadmin.service';
 import { OnboardCustomer } from './OnboardCustomer';
 import { ManageFeatures } from './ManageFeatures';
@@ -27,6 +30,8 @@ export const SuperAdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOrg, setSelectedOrg] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -55,6 +60,34 @@ export const SuperAdminDashboard = () => {
       toast.error('Failed to load dashboard data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteOrganization = async (org) => {
+    if (org.id === 'ofdlabs') {
+      toast.error('Cannot delete OFD Labs organization!');
+      return;
+    }
+    
+    try {
+      setDeleting(true);
+      const result = await deleteOrganization(org.id);
+      
+      toast.success(
+        `Successfully deleted ${org.orgName}!\n` +
+        `Removed: ${result.deletedUsers} users, ${result.deletedPayslips} payslips, ` +
+        `${result.deletedUploads} uploads, ${result.deletedTimetables} timetables, ` +
+        `${result.deletedLeaves} leaves, ${result.deletedAttendance} attendance records`,
+        { duration: 6000 }
+      );
+      
+      setDeleteConfirm(null);
+      await loadData(); // Reload data
+    } catch (error) {
+      console.error('Error deleting organization:', error);
+      toast.error('Failed to delete organization: ' + error.message);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -209,15 +242,26 @@ export const SuperAdminDashboard = () => {
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <button
-                      onClick={() => {
-                        setSelectedOrg(org);
-                        setActiveTab('features');
-                      }}
-                      className="text-blue-600 hover:text-blue-800 font-medium"
-                    >
-                      Manage Features
-                    </button>
+                    <div className="flex items-center space-x-3">
+                      <button
+                        onClick={() => {
+                          setSelectedOrg(org);
+                          setActiveTab('features');
+                        }}
+                        className="text-blue-600 hover:text-blue-800 font-medium"
+                      >
+                        Manage Features
+                      </button>
+                      {org.id !== 'ofdlabs' && (
+                        <button
+                          onClick={() => setDeleteConfirm(org)}
+                          className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50"
+                          title="Delete Organization"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -315,6 +359,75 @@ export const SuperAdminDashboard = () => {
           />
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="flex-shrink-0 w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Delete Organization</h3>
+                <p className="text-sm text-gray-500">This action cannot be undone</p>
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <p className="text-gray-700 mb-4">
+                Are you sure you want to delete <strong>{deleteConfirm.orgName}</strong>?
+              </p>
+              
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <p className="text-sm text-red-800 font-medium mb-2">This will permanently delete:</p>
+                <ul className="text-sm text-red-700 space-y-1">
+                  <li>• All users ({deleteConfirm.userCount || 0} users)</li>
+                  <li>• All payslips and salary data</li>
+                  <li>• All upload history</li>
+                  <li>• All timetables</li>
+                  <li>• All leave records</li>
+                  <li>• All attendance records</li>
+                  <li>• The organization itself</li>
+                </ul>
+              </div>
+
+              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-sm text-yellow-800">
+                  <strong>Note:</strong> Firebase Auth users will remain. You may need to manually delete them from Firebase Console if needed.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                disabled={deleting}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDeleteOrganization(deleteConfirm)}
+                disabled={deleting}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center justify-center"
+              >
+                {deleting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete Permanently
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

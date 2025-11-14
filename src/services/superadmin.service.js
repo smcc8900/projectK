@@ -5,6 +5,7 @@ import {
   getDoc,
   setDoc,
   updateDoc,
+  deleteDoc,
   query,
   orderBy,
   serverTimestamp,
@@ -152,6 +153,110 @@ export const toggleOrganizationStatus = async (orgId, isActive) => {
     return { success: true };
   } catch (error) {
     console.error('Error toggling organization status:', error);
+    throw error;
+  }
+};
+
+/**
+ * Delete organization and all associated data
+ * WARNING: This is a destructive operation!
+ */
+export const deleteOrganization = async (orgId) => {
+  try {
+    // 1. Get all users in this organization
+    const usersQuery = query(
+      collection(db, 'users'),
+      where('orgId', '==', orgId)
+    );
+    const usersSnapshot = await getDocs(usersQuery);
+    
+    const userIds = [];
+    const deletePromises = [];
+    
+    // Collect user IDs and delete user documents
+    usersSnapshot.forEach((doc) => {
+      userIds.push(doc.id);
+      deletePromises.push(deleteDoc(doc.ref));
+    });
+    
+    console.log(`Deleting ${userIds.length} users from organization ${orgId}`);
+    
+    // 2. Delete all payslips for this organization
+    const payslipsQuery = query(
+      collection(db, 'payslips'),
+      where('orgId', '==', orgId)
+    );
+    const payslipsSnapshot = await getDocs(payslipsQuery);
+    payslipsSnapshot.forEach((doc) => {
+      deletePromises.push(deleteDoc(doc.ref));
+    });
+    console.log(`Deleting ${payslipsSnapshot.size} payslips`);
+    
+    // 3. Delete all upload history for this organization
+    const uploadsQuery = query(
+      collection(db, 'uploadHistory'),
+      where('orgId', '==', orgId)
+    );
+    const uploadsSnapshot = await getDocs(uploadsQuery);
+    uploadsSnapshot.forEach((doc) => {
+      deletePromises.push(deleteDoc(doc.ref));
+    });
+    console.log(`Deleting ${uploadsSnapshot.size} upload history records`);
+    
+    // 4. Delete all timetables for this organization
+    const timetablesQuery = query(
+      collection(db, 'timetables'),
+      where('orgId', '==', orgId)
+    );
+    const timetablesSnapshot = await getDocs(timetablesQuery);
+    timetablesSnapshot.forEach((doc) => {
+      deletePromises.push(deleteDoc(doc.ref));
+    });
+    console.log(`Deleting ${timetablesSnapshot.size} timetables`);
+    
+    // 5. Delete all leaves for this organization
+    const leavesQuery = query(
+      collection(db, 'leaves'),
+      where('orgId', '==', orgId)
+    );
+    const leavesSnapshot = await getDocs(leavesQuery);
+    leavesSnapshot.forEach((doc) => {
+      deletePromises.push(deleteDoc(doc.ref));
+    });
+    console.log(`Deleting ${leavesSnapshot.size} leave records`);
+    
+    // 6. Delete all attendance records for this organization
+    const attendanceQuery = query(
+      collection(db, 'attendance'),
+      where('orgId', '==', orgId)
+    );
+    const attendanceSnapshot = await getDocs(attendanceQuery);
+    attendanceSnapshot.forEach((doc) => {
+      deletePromises.push(deleteDoc(doc.ref));
+    });
+    console.log(`Deleting ${attendanceSnapshot.size} attendance records`);
+    
+    // 7. Delete the organization document itself
+    const orgRef = doc(db, 'organizations', orgId);
+    deletePromises.push(deleteDoc(orgRef));
+    
+    // Execute all deletions
+    await Promise.all(deletePromises);
+    
+    console.log(`✅ Successfully deleted organization ${orgId} and all associated data`);
+    
+    return {
+      success: true,
+      deletedUsers: userIds.length,
+      deletedPayslips: payslipsSnapshot.size,
+      deletedUploads: uploadsSnapshot.size,
+      deletedTimetables: timetablesSnapshot.size,
+      deletedLeaves: leavesSnapshot.size,
+      deletedAttendance: attendanceSnapshot.size,
+      userIds: userIds, // Return user IDs for potential Auth cleanup
+    };
+  } catch (error) {
+    console.error('Error deleting organization:', error);
     throw error;
   }
 };
