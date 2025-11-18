@@ -3,14 +3,14 @@ import { useAuth } from '../../contexts/AuthContext';
 import { updateOrganizationName, getOrganization } from '../../services/organization.service';
 import { getLeavePolicy, updateLeavePolicy, updateAllEmployeeLeaves } from '../../services/leavePolicy.service';
 import toast from 'react-hot-toast';
-import { Settings, Save, Calendar, Users, AlertCircle, MapPin } from 'lucide-react';
+import { Settings, Save, Calendar, Users, AlertCircle, MapPin, HelpCircle } from 'lucide-react';
 
 export const OrganizationSettings = () => {
   const { userClaims, organization, refreshOrganization } = useAuth();
   const [orgName, setOrgName] = useState('');
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('general'); // 'general', 'leaves', or 'geofencing'
+  const [activeTab, setActiveTab] = useState('general'); // 'general', 'leaves', 'geofencing', or 'help'
   
   // Leave policy state
   const [leavePolicy, setLeavePolicy] = useState({
@@ -32,6 +32,17 @@ export const OrganizationSettings = () => {
   });
   const [geofenceLoading, setGeofenceLoading] = useState(false);
   const [detectingLocation, setDetectingLocation] = useState(false);
+
+  // Help & Support state
+  const [helpSupport, setHelpSupport] = useState({
+    contactEmail: '',
+    contactPhone: '',
+    officeAddress: '',
+    businessHours: '',
+    supportMessage: '',
+    faq: [{ question: '', answer: '' }],
+  });
+  const [helpSupportLoading, setHelpSupportLoading] = useState(false);
 
   useEffect(() => {
     const loadOrganization = async () => {
@@ -61,6 +72,20 @@ export const OrganizationSettings = () => {
             longitude: org.geofenceLocation.longitude || '',
             radius: org.geofenceLocation.radius || 50,
             address: org.geofenceLocation.address || '',
+          });
+        }
+
+        // Load help & support information
+        if (org.helpSupport) {
+          setHelpSupport({
+            contactEmail: org.helpSupport.contactEmail || '',
+            contactPhone: org.helpSupport.contactPhone || '',
+            officeAddress: org.helpSupport.officeAddress || '',
+            businessHours: org.helpSupport.businessHours || '',
+            supportMessage: org.helpSupport.supportMessage || '',
+            faq: org.helpSupport.faq && org.helpSupport.faq.length > 0
+              ? org.helpSupport.faq
+              : [{ question: '', answer: '' }],
           });
         }
       } catch (error) {
@@ -235,6 +260,65 @@ export const OrganizationSettings = () => {
     }
   };
 
+  const handleHelpSupportSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!userClaims?.orgId) {
+      toast.error('Organization ID not found');
+      return;
+    }
+
+    // Validate FAQ entries (remove empty ones)
+    const validFaq = helpSupport.faq.filter(
+      item => item.question.trim() && item.answer.trim()
+    );
+
+    setHelpSupportLoading(true);
+
+    try {
+      const { updateOrganization } = await import('../../services/organization.service');
+      await updateOrganization(userClaims.orgId, {
+        helpSupport: {
+          contactEmail: helpSupport.contactEmail.trim(),
+          contactPhone: helpSupport.contactPhone.trim(),
+          officeAddress: helpSupport.officeAddress.trim(),
+          businessHours: helpSupport.businessHours.trim(),
+          supportMessage: helpSupport.supportMessage.trim(),
+          faq: validFaq,
+        },
+      });
+      await refreshOrganization();
+      toast.success('Help & Support information updated successfully!');
+    } catch (error) {
+      console.error('Error updating help & support:', error);
+      toast.error(error.message || 'Failed to update help & support information');
+    } finally {
+      setHelpSupportLoading(false);
+    }
+  };
+
+  const addFaqItem = () => {
+    setHelpSupport({
+      ...helpSupport,
+      faq: [...helpSupport.faq, { question: '', answer: '' }],
+    });
+  };
+
+  const removeFaqItem = (index) => {
+    if (helpSupport.faq.length > 1) {
+      setHelpSupport({
+        ...helpSupport,
+        faq: helpSupport.faq.filter((_, i) => i !== index),
+      });
+    }
+  };
+
+  const updateFaqItem = (index, field, value) => {
+    const updatedFaq = [...helpSupport.faq];
+    updatedFaq[index] = { ...updatedFaq[index], [field]: value };
+    setHelpSupport({ ...helpSupport, faq: updatedFaq });
+  };
+
   if (initialLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -288,6 +372,17 @@ export const OrganizationSettings = () => {
           >
             <MapPin className="w-4 h-4" />
             <span>Geofencing</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('help')}
+            className={`${
+              activeTab === 'help'
+                ? 'border-primary-500 text-primary-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center space-x-2`}
+          >
+            <HelpCircle className="w-4 h-4" />
+            <span>Help & Support</span>
           </button>
         </nav>
       </div>
@@ -617,6 +712,189 @@ export const OrganizationSettings = () => {
                   <li>Set the radius to define the check-in area (recommended: 50-100 meters)</li>
                   <li>Employees will see check-in/check-out buttons on their dashboard when within range</li>
                 </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Help & Support Tab */}
+      {activeTab === 'help' && (
+        <div className="space-y-6">
+          <div className="bg-white rounded-lg shadow p-6">
+            <form onSubmit={handleHelpSupportSubmit} className="space-y-6">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Help & Support Information</h2>
+                <p className="text-sm text-gray-500 mb-6">
+                  Configure contact information and support content that will be displayed to all employees in your organization.
+                </p>
+
+                <div className="space-y-6">
+                  {/* Support Message */}
+                  <div>
+                    <label htmlFor="supportMessage" className="block text-sm font-medium text-gray-700 mb-2">
+                      Support Message
+                    </label>
+                    <textarea
+                      id="supportMessage"
+                      rows="4"
+                      value={helpSupport.supportMessage}
+                      onChange={(e) => setHelpSupport({ ...helpSupport, supportMessage: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                      placeholder="Welcome message or general support information..."
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      This message will be displayed at the top of the Help & Support page.
+                    </p>
+                  </div>
+
+                  {/* Contact Information */}
+                  <div>
+                    <h3 className="text-md font-semibold text-gray-900 mb-4">Contact Information</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label htmlFor="contactEmail" className="block text-sm font-medium text-gray-700 mb-2">
+                          Contact Email
+                        </label>
+                        <input
+                          id="contactEmail"
+                          type="email"
+                          value={helpSupport.contactEmail}
+                          onChange={(e) => setHelpSupport({ ...helpSupport, contactEmail: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                          placeholder="support@example.com"
+                        />
+                      </div>
+
+                      <div>
+                        <label htmlFor="contactPhone" className="block text-sm font-medium text-gray-700 mb-2">
+                          Contact Phone
+                        </label>
+                        <input
+                          id="contactPhone"
+                          type="tel"
+                          value={helpSupport.contactPhone}
+                          onChange={(e) => setHelpSupport({ ...helpSupport, contactPhone: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                          placeholder="+1 (555) 123-4567"
+                        />
+                      </div>
+
+                      <div className="md:col-span-2">
+                        <label htmlFor="officeAddress" className="block text-sm font-medium text-gray-700 mb-2">
+                          Office Address
+                        </label>
+                        <textarea
+                          id="officeAddress"
+                          rows="3"
+                          value={helpSupport.officeAddress}
+                          onChange={(e) => setHelpSupport({ ...helpSupport, officeAddress: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                          placeholder="123 Main Street, City, State 12345"
+                        />
+                      </div>
+
+                      <div className="md:col-span-2">
+                        <label htmlFor="businessHours" className="block text-sm font-medium text-gray-700 mb-2">
+                          Business Hours
+                        </label>
+                        <textarea
+                          id="businessHours"
+                          rows="2"
+                          value={helpSupport.businessHours}
+                          onChange={(e) => setHelpSupport({ ...helpSupport, businessHours: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                          placeholder="Monday - Friday: 9:00 AM - 5:00 PM"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* FAQ Section */}
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-md font-semibold text-gray-900">Frequently Asked Questions</h3>
+                      <button
+                        type="button"
+                        onClick={addFaqItem}
+                        className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+                      >
+                        + Add FAQ Item
+                      </button>
+                    </div>
+
+                    <div className="space-y-4">
+                      {helpSupport.faq.map((item, index) => (
+                        <div key={index} className="border border-gray-200 rounded-lg p-4">
+                          <div className="flex items-start justify-between mb-3">
+                            <span className="text-sm font-medium text-gray-700">FAQ #{index + 1}</span>
+                            {helpSupport.faq.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => removeFaqItem(index)}
+                                className="text-sm text-red-600 hover:text-red-700"
+                              >
+                                Remove
+                              </button>
+                            )}
+                          </div>
+                          <div className="space-y-3">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Question
+                              </label>
+                              <input
+                                type="text"
+                                value={item.question}
+                                onChange={(e) => updateFaqItem(index, 'question', e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                                placeholder="Enter question..."
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Answer
+                              </label>
+                              <textarea
+                                rows="3"
+                                value={item.answer}
+                                onChange={(e) => updateFaqItem(index, 'answer', e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                                placeholder="Enter answer..."
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3">
+                <button
+                  type="submit"
+                  disabled={helpSupportLoading}
+                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  {helpSupportLoading ? 'Saving...' : 'Save Help & Support'}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Info Box */}
+          <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded">
+            <div className="flex items-start">
+              <AlertCircle className="w-5 h-5 text-blue-400 mt-0.5 mr-3" />
+              <div>
+                <h3 className="text-sm font-medium text-blue-800">About Help & Support</h3>
+                <p className="text-sm text-blue-700 mt-1">
+                  This information will be visible to all employees on the Help & Support page. 
+                  You can leave fields empty if you don't want to display certain information.
+                  Empty FAQ items will be automatically removed when saving.
+                </p>
               </div>
             </div>
           </div>

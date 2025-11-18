@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import { 
   Building2, 
   Users, 
@@ -11,19 +13,23 @@ import {
   CheckCircle,
   XCircle,
   Trash2,
-  AlertTriangle
+  AlertTriangle,
+  LogOut
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { 
   getAllOrganizations, 
   getOrganizationStats,
   getUserCountByOrg,
-  deleteOrganization
+  deleteOrganization,
+  toggleOrganizationStatus
 } from '../../services/superadmin.service';
 import { OnboardCustomer } from './OnboardCustomer';
 import { ManageFeatures } from './ManageFeatures';
 
 export const SuperAdminDashboard = () => {
+  const { currentUser, signOut } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [organizations, setOrganizations] = useState([]);
   const [stats, setStats] = useState(null);
@@ -32,6 +38,11 @@ export const SuperAdminDashboard = () => {
   const [selectedOrg, setSelectedOrg] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [deleting, setDeleting] = useState(false);
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/login');
+  };
 
   useEffect(() => {
     loadData();
@@ -252,6 +263,27 @@ export const SuperAdminDashboard = () => {
                       >
                         Manage Features
                       </button>
+                      <button
+                        onClick={async () => {
+                          try {
+                            const isActive = org.subscription?.status === 'active';
+                            await toggleOrganizationStatus(org.id, !isActive);
+                            toast.success(`Organization ${!isActive ? 'activated' : 'deactivated'} successfully`);
+                            await loadData();
+                          } catch (e) {
+                            console.error('Error toggling status:', e);
+                            toast.error('Failed to update organization status');
+                          }
+                        }}
+                        className={`px-3 py-1 rounded text-sm font-medium ${
+                          org.subscription?.status === 'active'
+                            ? 'text-orange-700 bg-orange-50 hover:bg-orange-100'
+                            : 'text-green-700 bg-green-50 hover:bg-green-100'
+                        }`}
+                        title={org.subscription?.status === 'active' ? 'Set Inactive' : 'Set Active'}
+                      >
+                        {org.subscription?.status === 'active' ? 'Set Inactive' : 'Set Active'}
+                      </button>
                       {org.id !== 'ofdlabs' && (
                         <button
                           onClick={() => setDeleteConfirm(org)}
@@ -296,13 +328,32 @@ export const SuperAdminDashboard = () => {
                 <p className="text-sm text-gray-500">OFD Labs - Customer Management</p>
               </div>
             </div>
-            <button
-              onClick={() => setActiveTab('onboard')}
-              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              <Plus className="w-5 h-5" />
-              <span>New Customer</span>
-            </button>
+            <div className="flex items-center space-x-3">
+              {currentUser && (
+                <div className="flex items-center space-x-2 text-sm text-gray-600 mr-2">
+                  <span className="hidden sm:inline">{currentUser.email}</span>
+                  <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium">Super Admin</span>
+                </div>
+              )}
+              <button
+                onClick={() => setActiveTab('onboard')}
+                className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                <Plus className="w-5 h-5" />
+                <span className="hidden sm:inline">New Customer</span>
+                <span className="sm:hidden">New</span>
+              </button>
+              {currentUser && (
+                <button
+                  onClick={handleSignOut}
+                  className="flex items-center space-x-2 px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                  title="Sign Out"
+                >
+                  <LogOut className="w-5 h-5" />
+                  <span className="hidden sm:inline">Sign Out</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>

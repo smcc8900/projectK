@@ -30,6 +30,7 @@ export const createUser = async (userData, orgId) => {
       profile: {
         firstName: userData.firstName,
         lastName: userData.lastName,
+        phoneNumber: userData.phoneNumber || '',
         employeeId: userData.employeeId,
         department: userData.department,
         designation: userData.designation,
@@ -276,6 +277,105 @@ export const checkEmployeeIdUnique = async (employeeId, orgId, excludeUserId = n
     console.error('Error checking employee ID uniqueness:', error);
     // If query fails (e.g., index missing), assume unique to allow operation
     return { unique: true, exists: false };
+  }
+};
+
+/**
+ * Parse and validate user Excel file
+ */
+export const validateUserExcelBeforeUpload = async (file) => {
+  try {
+    const { parseExcelFile, normalizeUserColumnNames, validateUserExcelData } = await import('../utils/excelParser');
+    
+    const rawData = await parseExcelFile(file);
+    const normalizedData = normalizeUserColumnNames(rawData);
+    const validationResults = validateUserExcelData(normalizedData);
+
+    return {
+      totalRows: rawData.length,
+      validRows: validationResults.valid.length,
+      invalidRows: validationResults.invalid.length,
+      errors: validationResults.invalid,
+      preview: normalizedData.slice(0, 5), // First 5 rows for preview
+    };
+  } catch (error) {
+    console.error('Error validating user Excel:', error);
+    throw error;
+  }
+};
+
+/**
+ * Process user Excel upload and create users in batch
+ */
+export const processUserExcelUpload = async (file, orgId, adminUserId) => {
+  try {
+    const { parseExcelFile, normalizeUserColumnNames, validateUserExcelData, transformUserData } = await import('../utils/excelParser');
+    
+    // 1. Parse Excel file
+    const rawData = await parseExcelFile(file);
+    
+    if (rawData.length === 0) {
+      throw new Error('Excel file is empty');
+    }
+
+    // 2. Normalize column names
+    const normalizedData = normalizeUserColumnNames(rawData);
+
+    // 3. Validate data
+    const validationResults = validateUserExcelData(normalizedData);
+
+    if (validationResults.valid.length === 0) {
+      throw new Error('No valid records found in Excel file');
+    }
+
+    // 4. Transform to user format
+    const usersData = validationResults.valid.map(row => transformUserData(row));
+
+    // 5. Create users in batch
+    const results = {
+      successCount: 0,
+      failedCount: 0,
+      errors: [],
+    };
+
+    // Process users one by one (to handle errors gracefully)
+    for (let i = 0; i < usersData.length; i++) {
+      const userData = usersData[i];
+      try {
+        await createUser(userData, orgId);
+        results.successCount++;
+      } catch (error) {
+        results.failedCount++;
+        results.errors.push({
+          row: validationResults.valid[i].rowNumber,
+          email: userData.email,
+          error: error.message || 'Failed to create user',
+        });
+      }
+    }
+
+    // Combine validation errors with creation errors
+    const allErrors = [
+      ...validationResults.invalid.map(item => ({
+        row: item.rowNumber,
+        email: item.data.email || 'N/A',
+        error: item.errors.join(', '),
+      })),
+      ...results.errors,
+    ];
+
+    return {
+      success: true,
+      totalRows: rawData.length,
+      validRows: validationResults.valid.length,
+      invalidRows: validationResults.invalid.length,
+      successCount: results.successCount,
+      failedCount: results.failedCount + validationResults.invalid.length,
+      errors: allErrors,
+    };
+  } catch (error) {
+    console.error('Error processing user Excel upload:', error);
+    throw error;
   }
 };
 

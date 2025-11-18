@@ -19,6 +19,7 @@ import { OrganizationSettings } from './components/admin/OrganizationSettings';
 import { TimetableManagement } from './components/admin/TimetableManagement';
 import { LeaveManagement } from './components/admin/LeaveManagement';
 import { AttendanceManagement } from './components/admin/AttendanceManagement';
+import { Announcements } from './components/admin/Announcements';
 
 // Employee Components (also used by admins for their own payslips)
 import { Dashboard as EmployeeDashboard } from './components/employee/Dashboard';
@@ -28,6 +29,7 @@ import { Timetable } from './components/employee/Timetable';
 import { LeaveManagement as EmployeeLeaveManagement } from './components/employee/LeaveManagement';
 import { Colleagues } from './components/employee/Colleagues';
 import { MyAttendance } from './components/employee/MyAttendance';
+import { HelpSupport } from './components/employee/HelpSupport';
 
 // Super Admin Components
 import { SuperAdminDashboard } from './components/superadmin/SuperAdminDashboard';
@@ -157,6 +159,16 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/admin/announcements"
+            element={
+              <ProtectedRoute requireAdmin>
+                <AppLayout>
+                  <Announcements />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
 
           {/* Employee Routes */}
           <Route
@@ -225,6 +237,16 @@ function App() {
               <ProtectedRoute>
                 <AppLayout>
                   <MyAttendance />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/employee/help-support"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <HelpSupport />
                 </AppLayout>
               </ProtectedRoute>
             }

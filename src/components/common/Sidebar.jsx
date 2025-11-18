@@ -13,7 +13,9 @@ import {
   ClipboardList,
   UserCheck,
   CalendarCheck,
-  Clock
+  Clock,
+  HelpCircle,
+  Megaphone
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -24,6 +26,7 @@ export const Sidebar = () => {
   const adminLinks = [
     { to: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard', feature: null },
     { to: '/admin/users', icon: Users, label: 'User Management', feature: null },
+    { to: '/admin/announcements', icon: Megaphone, label: 'Announcements', feature: null },
     { to: '/admin/upload', icon: Upload, label: 'Upload Payroll', feature: 'payslips' },
     { to: '/admin/history', icon: History, label: 'Upload History', feature: 'payslips' },
     { to: '/admin/timetable', icon: Calendar, label: 'Manage Timetable', feature: 'timetable' },
@@ -82,6 +85,26 @@ export const Sidebar = () => {
               </NavLink>
             );
           })}
+          
+          {/* Help & Support - Available to all users */}
+          <div className="pt-2 mt-2 border-t border-gray-200">
+            <NavLink
+              to="/employee/help-support"
+              className={({ isActive }) =>
+                `flex items-center space-x-3 px-3 lg:px-4 py-2.5 lg:py-3 rounded-lg transition-all duration-200 group ${
+                  isActive
+                    ? 'bg-primary-50 text-primary-700 font-semibold shadow-sm'
+                    : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                }`
+              }
+            >
+              <HelpCircle className={`w-5 h-5 flex-shrink-0 ${location.pathname === '/employee/help-support' ? 'text-primary-600' : 'text-gray-500 group-hover:text-gray-700'}`} />
+              <span className="text-sm lg:text-base">Help & Support</span>
+              {location.pathname === '/employee/help-support' && (
+                <div className="ml-auto w-1.5 h-1.5 bg-primary-600 rounded-full" />
+              )}
+            </NavLink>
+          </div>
         </nav>
 
       </aside>

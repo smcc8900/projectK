@@ -42,3 +42,36 @@ export const sanitizeNumber = (value) => {
   return isNaN(num) ? 0 : Math.max(0, num);
 };
 
+export const validateUserData = (data) => {
+  const errors = [];
+
+  if (!data.email || !validateEmail(data.email)) {
+    errors.push('Invalid email address');
+  }
+
+  if (!data.firstName || data.firstName.trim().length === 0) {
+    errors.push('First name is required');
+  }
+
+  if (!data.lastName || data.lastName.trim().length === 0) {
+    errors.push('Last name is required');
+  }
+
+  if (!data.password || !validatePassword(data.password)) {
+    errors.push('Password is required and must be at least 6 characters');
+  }
+
+  // Validate phone number format if provided
+  if (data.phoneNumber && data.phoneNumber.trim().length > 0) {
+    const phoneRegex = /^[\+]?[(]?[0-9]{1,4}[)]?[-\s\.]?[(]?[0-9]{1,4}[)]?[-\s\.]?[0-9]{1,9}$/;
+    if (!phoneRegex.test(data.phoneNumber.trim())) {
+      errors.push('Invalid phone number format');
+    }
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+  };
+};
+

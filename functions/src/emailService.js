@@ -317,6 +317,87 @@ const getEmailTemplate = (type, data) => {
         </body>
         </html>
       `
+    },
+    
+    profileUpdatedToEmployee: {
+      subject: `Your Profile Was Updated`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background-color: #2563eb; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+            .content { background-color: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; }
+            .change { padding: 8px 10px; background: #fff; border-radius: 6px; border-left: 4px solid #2563eb; margin: 8px 0; }
+            .footer { background-color: #f3f4f6; padding: 20px; text-align: center; font-size: 12px; color: #6b7280; border-radius: 0 0 8px 8px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Profile Updated</h1>
+            </div>
+            <div class="content">
+              <p>Hi ${data.employeeName},</p>
+              <p>Your profile information was updated on <strong>${data.updatedAt}</strong>.</p>
+              ${Array.isArray(data.changes) && data.changes.length ? `
+              <div>
+                <p>Here are the fields that changed:</p>
+                ${data.changes.map(c => `
+                  <div class="change">
+                    <strong>${c.field}</strong><br />
+                    <small>From:</small> ${c.before ?? '-'}<br />
+                    <small>To:</small> ${c.after ?? '-'}
+                  </div>
+                `).join('')}
+              </div>` : ''}
+              <p>If you did not make these changes, please contact your administrator immediately.</p>
+            </div>
+            <div class="footer">
+              <p>This is an automated notification for your security.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `
+    },
+    
+    orgAnnouncementToUser: {
+      subject: (data && data.organizationName && data.title)
+        ? `📢 ${data.organizationName} Announcement: ${data.title}`
+        : `📢 Organization Announcement`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background-color: #111827; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+            .content { background-color: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; }
+            .footer { background-color: #f3f4f6; padding: 20px; text-align: center; font-size: 12px; color: #6b7280; border-radius: 0 0 8px 8px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>${(typeof data?.title === 'string' ? data.title : 'Announcement')}</h1>
+            </div>
+            <div class="content">
+              <p>${(typeof data?.message === 'string' ? data.message.replace(/\n/g, '<br />') : '')}</p>
+              <p style="margin-top: 20px; color: #6b7280; font-size: 12px;">
+                Posted by ${(data?.createdBy || 'Administrator')} • ${(data?.createdAt || '')}
+              </p>
+            </div>
+            <div class="footer">
+              <p>${(data?.organizationName || '')} • This is an automated announcement</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `
     }
   };
 

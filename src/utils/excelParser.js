@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import { validatePayslipData, sanitizeNumber } from './validators';
+import { validatePayslipData, validateUserData, sanitizeNumber } from './validators';
 
 export const parseExcelFile = (file) => {
   return new Promise((resolve, reject) => {
@@ -126,6 +126,79 @@ export const transformPayslipData = (row, orgId, adminUserId) => {
     generatedBy: adminUserId,
     generatedAt: new Date(),
     orgId,
+  };
+};
+
+// User Excel parsing functions
+export const normalizeUserColumnNames = (data) => {
+  const columnMap = {
+    'email': ['email', 'Email', 'EMAIL', 'e-mail', 'E-mail'],
+    'firstName': ['firstName', 'First Name', 'firstname', 'Firstname', 'fname', 'FName'],
+    'lastName': ['lastName', 'Last Name', 'lastname', 'Lastname', 'lname', 'LName'],
+    'phoneNumber': ['phoneNumber', 'Phone Number', 'Phone', 'phone', 'PhoneNumber', 'mobile', 'Mobile', 'Mobile Number'],
+    'employeeId': ['employeeId', 'EmployeeId', 'Employee ID', 'EmpId', 'Emp ID'],
+    'department': ['department', 'Department', 'DEPT', 'dept'],
+    'designation': ['designation', 'Designation', 'Title', 'title', 'Position', 'position'],
+    'role': ['role', 'Role', 'ROLE', 'userRole', 'User Role'],
+    'password': ['password', 'Password', 'PASSWORD', 'tempPassword', 'Temp Password', 'Temporary Password'],
+  };
+
+  return data.map(row => {
+    const normalizedRow = {};
+    
+    Object.keys(columnMap).forEach(standardName => {
+      const variations = columnMap[standardName];
+      const matchingKey = Object.keys(row).find(key => 
+        variations.includes(key)
+      );
+      
+      if (matchingKey) {
+        normalizedRow[standardName] = row[matchingKey];
+      }
+    });
+
+    return normalizedRow;
+  });
+};
+
+export const validateUserExcelData = (data) => {
+  const results = {
+    valid: [],
+    invalid: [],
+    totalRows: data.length,
+  };
+
+  data.forEach((row, index) => {
+    const validation = validateUserData(row);
+    
+    if (validation.isValid) {
+      results.valid.push({
+        ...row,
+        rowNumber: index + 2, // +2 because Excel starts at 1 and has header
+      });
+    } else {
+      results.invalid.push({
+        rowNumber: index + 2,
+        data: row,
+        errors: validation.errors,
+      });
+    }
+  });
+
+  return results;
+};
+
+export const transformUserData = (row) => {
+  return {
+    email: row.email.toLowerCase().trim(),
+    firstName: row.firstName.trim(),
+    lastName: row.lastName.trim(),
+    phoneNumber: row.phoneNumber ? row.phoneNumber.trim() : '',
+    employeeId: row.employeeId ? row.employeeId.trim().toUpperCase() : '',
+    department: row.department ? row.department.trim() : '',
+    designation: row.designation ? row.designation.trim() : '',
+    role: (row.role || 'employee').toLowerCase().trim(),
+    tempPassword: row.password.trim(),
   };
 };
 

@@ -4,12 +4,15 @@ import { getUserById, updateUser, checkEmployeeIdUnique } from '../../services/u
 import { updatePassword, updateEmail, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
 import { auth } from '../../services/firebase';
 import toast from 'react-hot-toast';
-import { User, Lock, Mail, Badge, Eye, EyeOff, Save } from 'lucide-react';
+import { User, Lock, Mail, Badge, Eye, EyeOff, Save, Upload } from 'lucide-react';
+import { storage } from '../../services/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 export const Profile = () => {
   const { currentUser, userClaims } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -21,6 +24,7 @@ export const Profile = () => {
     lastName: '',
     department: '',
     designation: '',
+    photoURL: '',
   });
   
   const [passwordData, setPasswordData] = useState({
@@ -46,6 +50,7 @@ export const Profile = () => {
           lastName: userData.profile?.lastName || '',
           department: userData.profile?.department || '',
           designation: userData.profile?.designation || '',
+          photoURL: userData.profile?.photoURL || currentUser.photoURL || '',
         });
       }
     } catch (error) {
@@ -79,19 +84,7 @@ export const Profile = () => {
     setSaving(true);
     
     try {
-      // Validate Employee ID uniqueness
-      if (profileData.employeeId) {
-        const employeeIdCheck = await checkEmployeeIdUnique(
-          profileData.employeeId, 
-          userClaims.orgId, 
-          currentUser.uid
-        );
-        if (!employeeIdCheck.unique) {
-          toast.error('Employee ID already exists. Please choose a different one.');
-          setSaving(false);
-          return;
-        }
-      }
+      // Note: Only email, firstName, lastName are editable by employees.
 
       // Update email if changed
       if (profileData.email !== currentUser.email) {
@@ -116,9 +109,11 @@ export const Profile = () => {
         profile: {
           firstName: profileData.firstName,
           lastName: profileData.lastName,
+          // Keep non-editables as-is
           employeeId: profileData.employeeId,
           department: profileData.department,
           designation: profileData.designation,
+          photoURL: profileData.photoURL || '',
         },
       });
 
@@ -208,6 +203,63 @@ export const Profile = () => {
 
       {/* Main Content - Better layout for all screen sizes */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 max-w-none">
+        {/* Profile Photo */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+          <div className="px-4 sm:px-6 py-4 bg-gradient-to-r from-primary-50 to-primary-100 border-b border-gray-200">
+            <div className="flex items-center">
+              <div className="flex items-center justify-center w-10 h-10 bg-primary-600 rounded-lg mr-3">
+                <User className="w-5 h-5 text-white" />
+              </div>
+              <h2 className="text-lg font-semibold text-gray-900">Profile Photo</h2>
+            </div>
+          </div>
+          <div className="p-4 sm:p-6">
+            <div className="flex items-center space-x-4">
+              <img
+                src={profileData.photoURL || 'https://ui-avatars.com/api/?background=0D8ABC&color=fff&name=' + encodeURIComponent(`${profileData.firstName || ''} ${profileData.lastName || ''}`.trim() || 'User')}
+                alt="Profile"
+                className="w-20 h-20 rounded-full object-cover border"
+                onError={(e) => { e.currentTarget.src = 'https://ui-avatars.com/api/?background=0D8ABC&color=fff&name=' + encodeURIComponent(profileData.firstName || 'U'); }}
+              />
+              <div>
+                <label className="block">
+                  <span className="sr-only">Choose profile photo</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file || !currentUser || !userClaims?.orgId) return;
+                      if (file.size > 5 * 1024 * 1024) {
+                        toast.error('Please upload an image smaller than 5MB');
+                        return;
+                      }
+                      try {
+                        setUploadingPhoto(true);
+                        const path = `organizations/${userClaims.orgId}/users/${currentUser.uid}/profile.jpg`;
+                        const storageRef = ref(storage, path);
+                        await uploadBytes(storageRef, file, { contentType: file.type });
+                        const url = await getDownloadURL(storageRef);
+                        await updateUser(currentUser.uid, { profile: { ...profileData, photoURL: url } });
+                        setProfileData(prev => ({ ...prev, photoURL: url }));
+                        toast.success('Profile photo updated');
+                      } catch (err) {
+                        console.error('Photo upload failed:', err);
+                        toast.error('Failed to upload photo');
+                      } finally {
+                        setUploadingPhoto(false);
+                      }
+                    }}
+                    className="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
+                  />
+                </label>
+                <p className="mt-2 text-xs text-gray-500">JPG/PNG up to 5MB</p>
+                {uploadingPhoto && <p className="text-xs text-gray-500 mt-1">Uploading...</p>}
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Profile Information */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
           <div className="px-4 sm:px-6 py-4 bg-gradient-to-r from-primary-50 to-primary-100 border-b border-gray-200">
@@ -267,19 +319,17 @@ export const Profile = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 <Badge className="w-4 h-4 inline mr-1" />
-                Employee ID *
+                Employee ID
               </label>
               <input
                 type="text"
-                required
                 value={profileData.employeeId}
-                onChange={(e) => handleProfileChange('employeeId', e.target.value.trim().toUpperCase())}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors sm:text-sm"
+                readOnly
+                disabled
+                className="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-lg shadow-sm text-gray-500 sm:text-sm"
                 placeholder="EMP001"
               />
-              <p className="mt-1 text-xs text-gray-500">
-                Employee ID must be unique within your organization
-              </p>
+              <p className="mt-1 text-xs text-gray-400">Contact admin to change Employee ID</p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -290,8 +340,9 @@ export const Profile = () => {
                 <input
                   type="text"
                   value={profileData.department}
-                  onChange={(e) => handleProfileChange('department', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors sm:text-sm"
+                  readOnly
+                  disabled
+                  className="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-lg shadow-sm text-gray-500 sm:text-sm"
                 />
               </div>
               <div>
@@ -301,8 +352,9 @@ export const Profile = () => {
                 <input
                   type="text"
                   value={profileData.designation}
-                  onChange={(e) => handleProfileChange('designation', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors sm:text-sm"
+                  readOnly
+                  disabled
+                  className="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-lg shadow-sm text-gray-500 sm:text-sm"
                 />
               </div>
             </div>

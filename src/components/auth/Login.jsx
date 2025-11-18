@@ -131,6 +131,26 @@ export const Login = () => {
       
       toast.success('Login successful!');
       
+      // If not superadmin, ensure organization is active
+      if (userRole !== 'superadmin' && userOrgId) {
+        try {
+          const org = await getOrganization(userOrgId);
+          const status = org?.subscription?.status || 'active';
+          if (status !== 'active') {
+            await logout();
+            toast.error(`Your organization (${org.orgName}) is currently inactive. Please contact your administrator.`, { duration: 6000 });
+            setLoading(false);
+            return;
+          }
+        } catch (e) {
+          // If we cannot fetch org, block login defensively
+          await logout();
+          toast.error('Unable to verify organization status. Please try again later.', { duration: 6000 });
+          setLoading(false);
+          return;
+        }
+      }
+      
       // Redirect based on role from fresh token
       if (userRole === 'superadmin') {
         navigate('/superadmin/dashboard', { replace: true });

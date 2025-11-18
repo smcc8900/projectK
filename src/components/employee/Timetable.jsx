@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Calendar, Clock, MapPin, User } from 'lucide-react';
+import { Calendar, Clock, MapPin, User, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export const Timetable = () => {
@@ -53,6 +53,30 @@ export const Timetable = () => {
     return timetable.find(entry => entry.day === day && entry.time === time);
   };
 
+  const downloadCSV = () => {
+    // Build rows: Day, Time, Subject, Room, Class
+    const header = ['Day', 'Time', 'Subject', 'Room', 'Class'];
+    const rows = [];
+    const allDays = days;
+    const allTimes = timeSlots;
+    allDays.forEach(day => {
+      allTimes.forEach(time => {
+        const cls = getClassForSlot(day, time);
+        if (cls) {
+          rows.push([day, time, cls.subject || '', cls.room || '', cls.class || '']);
+        }
+      });
+    });
+    const csv = [header, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'timetable.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -69,9 +93,19 @@ export const Timetable = () => {
           <h1 className="text-2xl font-bold text-gray-900">My Timetable</h1>
           <p className="mt-1 text-sm text-gray-500">View your weekly class schedule</p>
         </div>
-        <div className="flex items-center space-x-2 text-sm text-gray-600">
-          <Calendar className="w-5 h-5" />
-          <span>Academic Year 2025</span>
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={downloadCSV}
+            disabled={timetable.length === 0}
+            className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Download CSV
+          </button>
+          <div className="flex items-center space-x-2 text-sm text-gray-600">
+            <Calendar className="w-5 h-5" />
+            <span>Academic Year 2025</span>
+          </div>
         </div>
       </div>
 

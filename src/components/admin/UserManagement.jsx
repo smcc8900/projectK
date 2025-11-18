@@ -1,22 +1,30 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { getUsers, createUser, updateUser, deactivateUser, activateUser } from '../../services/user.service';
+import { getUsers, createUser, updateUser, deactivateUser, activateUser, deleteUser } from '../../services/user.service';
 import { Table } from '../shared/Table';
 import { Modal } from '../shared/Modal';
+import { FileUploader } from '../shared/FileUploader';
+import { processUserExcelUpload, validateUserExcelBeforeUpload } from '../../services/user.service';
 import toast from 'react-hot-toast';
-import { UserPlus, Edit, UserX, UserCheck, Eye, EyeOff } from 'lucide-react';
+import { UserPlus, Edit, UserX, UserCheck, Eye, EyeOff, Upload, FileSpreadsheet, Trash2 } from 'lucide-react';
 
 export const UserManagement = () => {
-  const { userClaims } = useAuth();
+  const { userClaims, currentUser } = useAuth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [showBulkUpload, setShowBulkUpload] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [validationResults, setValidationResults] = useState(null);
+  const [uploadResults, setUploadResults] = useState(null);
+  const [uploadLoading, setUploadLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     firstName: '',
     lastName: '',
+    phoneNumber: '',
     employeeId: '',
     department: '',
     designation: '',
@@ -78,6 +86,7 @@ export const UserManagement = () => {
           profile: {
             firstName: formData.firstName,
             lastName: formData.lastName,
+            phoneNumber: formData.phoneNumber,
             employeeId: formData.employeeId,
             department: formData.department,
             designation: formData.designation,
@@ -111,6 +120,30 @@ export const UserManagement = () => {
     }
   };
 
+  const handleDeleteUser = async (user) => {
+    if (!window.confirm(
+      `Are you sure you want to delete ${user.profile?.firstName} ${user.profile?.lastName}?\n\n` +
+      `This will permanently delete:\n` +
+      `- User account and authentication\n` +
+      `- All payslips\n` +
+      `- All leave requests\n` +
+      `- All attendance records\n` +
+      `- All timetable entries\n` +
+      `- Profile photo\n\n` +
+      `This action cannot be undone!`
+    )) {
+      return;
+    }
+
+    try {
+      await deleteUser(user.id);
+      toast.success('User and all associated data deleted successfully');
+      loadUsers();
+    } catch (error) {
+      toast.error(error.message || 'Failed to delete user');
+    }
+  };
+
   const openModal = (user = null) => {
     if (user) {
       setEditingUser(user);
@@ -118,6 +151,7 @@ export const UserManagement = () => {
         email: user.email,
         firstName: user.profile.firstName,
         lastName: user.profile.lastName,
+        phoneNumber: user.profile.phoneNumber || '',
         employeeId: user.profile.employeeId,
         department: user.profile.department,
         designation: user.profile.designation,
@@ -129,6 +163,7 @@ export const UserManagement = () => {
         email: '',
         firstName: '',
         lastName: '',
+        phoneNumber: '',
         employeeId: '',
         department: '',
         designation: '',
@@ -146,6 +181,65 @@ export const UserManagement = () => {
     setShowPassword(false);
   };
 
+  const handleBulkFileSelect = async (file) => {
+    setSelectedFile(file);
+    setValidationResults(null);
+    setUploadResults(null);
+
+    if (file) {
+      try {
+        setUploadLoading(true);
+        const results = await validateUserExcelBeforeUpload(file);
+        setValidationResults(results);
+        
+        if (results.invalidRows > 0) {
+          toast.error(`Found ${results.invalidRows} invalid rows. Please review before uploading.`);
+        } else {
+          toast.success(`File validated successfully! ${results.validRows} valid rows found.`);
+        }
+      } catch (error) {
+        toast.error(error.message || 'Failed to validate file');
+        setSelectedFile(null);
+      } finally {
+        setUploadLoading(false);
+      }
+    }
+  };
+
+  const handleBulkUpload = async () => {
+    if (!selectedFile || !userClaims?.orgId) return;
+
+    try {
+      setUploadLoading(true);
+      const results = await processUserExcelUpload(
+        selectedFile,
+        userClaims.orgId,
+        currentUser.uid
+      );
+      
+      setUploadResults(results);
+      
+      if (results.successCount > 0) {
+        toast.success(`Successfully created ${results.successCount} users!`);
+        loadUsers(); // Refresh user list
+      }
+      
+      if (results.failedCount > 0) {
+        toast.error(`${results.failedCount} records failed. Check the error details below.`);
+      }
+
+      // Reset file selection after successful upload
+      if (results.failedCount === 0) {
+        setSelectedFile(null);
+        setValidationResults(null);
+      }
+    } catch (error) {
+      toast.error(error.message || 'Failed to process upload');
+    } finally {
+      setUploadLoading(false);
+    }
+  };
+
   const columns = [
     {
       header: 'Employee ID',
@@ -159,6 +253,10 @@ export const UserManagement = () => {
     {
       header: 'Email',
       accessor: 'email',
+    },
+    {
+      header: 'Phone',
+      render: (row) => row.profile?.phoneNumber || 'N/A',
     },
     {
       header: 'Department',
@@ -206,6 +304,13 @@ export const UserManagement = () => {
           >
             {row.isActive ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
           </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); handleDeleteUser(row); }}
+            className="text-red-600 hover:text-red-900"
+            title="Delete User"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
         </div>
       ),
     },
@@ -227,14 +332,159 @@ export const UserManagement = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h1 className="text-xl sm:text-2xl font-bold text-gray-900">User Management</h1>
-        <button
-          onClick={() => openModal()}
-          className="flex items-center justify-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-sm hover:shadow-md"
-        >
-          <UserPlus className="w-5 h-5 mr-2" />
-          <span className="whitespace-nowrap">Add User</span>
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => setShowBulkUpload(!showBulkUpload)}
+            className="flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm hover:shadow-md"
+          >
+            <FileSpreadsheet className="w-5 h-5 mr-2" />
+            <span className="whitespace-nowrap">Bulk Upload</span>
+          </button>
+          <button
+            onClick={() => openModal()}
+            className="flex items-center justify-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-sm hover:shadow-md"
+          >
+            <UserPlus className="w-5 h-5 mr-2" />
+            <span className="whitespace-nowrap">Add User</span>
+          </button>
+        </div>
       </div>
+
+      {/* Bulk Upload Section */}
+      {showBulkUpload && (
+        <div className="bg-white rounded-lg shadow p-6 space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-medium text-gray-900">Bulk Upload Users</h2>
+            <button
+              onClick={() => {
+                setShowBulkUpload(false);
+                setSelectedFile(null);
+                setValidationResults(null);
+                setUploadResults(null);
+              }}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              ✕
+            </button>
+          </div>
+
+          <FileUploader onFileSelect={handleBulkFileSelect} accept=".xlsx,.xls" />
+
+          <div>
+            <h3 className="text-sm font-medium text-gray-700 mb-2">Expected Excel Format:</h3>
+            <div className="bg-gray-50 p-4 rounded text-xs overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead>
+                  <tr>
+                    <th className="px-2 py-1 text-left">Email *</th>
+                    <th className="px-2 py-1 text-left">First Name *</th>
+                    <th className="px-2 py-1 text-left">Last Name *</th>
+                    <th className="px-2 py-1 text-left">Phone Number</th>
+                    <th className="px-2 py-1 text-left">Employee ID</th>
+                    <th className="px-2 py-1 text-left">Department</th>
+                    <th className="px-2 py-1 text-left">Designation</th>
+                    <th className="px-2 py-1 text-left">Role</th>
+                    <th className="px-2 py-1 text-left">Password *</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="px-2 py-1">john@company.com</td>
+                    <td className="px-2 py-1">John</td>
+                    <td className="px-2 py-1">Doe</td>
+                    <td className="px-2 py-1">+1234567890</td>
+                    <td className="px-2 py-1">EMP001</td>
+                    <td className="px-2 py-1">Engineering</td>
+                    <td className="px-2 py-1">Developer</td>
+                    <td className="px-2 py-1">employee</td>
+                    <td className="px-2 py-1">TempPass123!</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              * Required fields: Email, First Name, Last Name, Password. Role defaults to "employee" if not specified.
+            </p>
+          </div>
+
+          {validationResults && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-3 gap-4">
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <p className="text-sm text-blue-600 font-medium">Total Rows</p>
+                  <p className="text-2xl font-bold text-blue-900">{validationResults.totalRows}</p>
+                </div>
+                <div className="bg-green-50 p-4 rounded-lg">
+                  <p className="text-sm text-green-600 font-medium">Valid Rows</p>
+                  <p className="text-2xl font-bold text-green-900">{validationResults.validRows}</p>
+                </div>
+                <div className="bg-red-50 p-4 rounded-lg">
+                  <p className="text-sm text-red-600 font-medium">Invalid Rows</p>
+                  <p className="text-2xl font-bold text-red-900">{validationResults.invalidRows}</p>
+                </div>
+              </div>
+
+              {validationResults.errors.length > 0 && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 max-h-64 overflow-y-auto">
+                  <h3 className="text-sm font-medium text-red-900 mb-2">Validation Errors</h3>
+                  <div className="space-y-2">
+                    {validationResults.errors.map((error, index) => (
+                      <div key={index} className="text-sm text-red-800">
+                        <span className="font-medium">Row {error.rowNumber}:</span> {error.errors.join(', ')}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {validationResults.validRows > 0 && (
+                <button
+                  onClick={handleBulkUpload}
+                  disabled={uploadLoading}
+                  className="flex items-center px-6 py-3 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Upload className="w-5 h-5 mr-2" />
+                  {uploadLoading ? 'Processing...' : `Process ${validationResults.validRows} Users`}
+                </button>
+              )}
+            </div>
+          )}
+
+          {uploadResults && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-green-50 p-4 rounded-lg flex items-center">
+                  <UserCheck className="w-8 h-8 text-green-500 mr-3" />
+                  <div>
+                    <p className="text-sm text-green-600 font-medium">Successful</p>
+                    <p className="text-2xl font-bold text-green-900">{uploadResults.successCount}</p>
+                  </div>
+                </div>
+                <div className="bg-red-50 p-4 rounded-lg flex items-center">
+                  <UserX className="w-8 h-8 text-red-500 mr-3" />
+                  <div>
+                    <p className="text-sm text-red-600 font-medium">Failed</p>
+                    <p className="text-2xl font-bold text-red-900">{uploadResults.failedCount}</p>
+                  </div>
+                </div>
+              </div>
+
+              {uploadResults.errors.length > 0 && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 max-h-64 overflow-y-auto">
+                  <h3 className="text-sm font-medium text-red-900 mb-2">Processing Errors</h3>
+                  <div className="space-y-2">
+                    {uploadResults.errors.map((error, index) => (
+                      <div key={index} className="text-sm text-red-800">
+                        <span className="font-medium">{error.email || `Row ${error.row}`}:</span> {error.error}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Desktop Table View */}
       <div className="hidden lg:block bg-white rounded-lg shadow overflow-hidden">
@@ -256,6 +506,9 @@ export const UserManagement = () => {
                     {user.profile?.firstName} {user.profile?.lastName}
                   </h3>
                   <p className="text-sm text-gray-500 truncate">{user.email}</p>
+                  {user.profile?.phoneNumber && (
+                    <p className="text-xs text-gray-400 mt-1">Phone: {user.profile.phoneNumber}</p>
+                  )}
                   {user.profile?.employeeId && (
                     <p className="text-xs text-gray-400 mt-1">ID: {user.profile.employeeId}</p>
                   )}
@@ -278,6 +531,13 @@ export const UserManagement = () => {
                     title={user.isActive ? 'Deactivate' : 'Activate'}
                   >
                     {user.isActive ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleDeleteUser(user); }}
+                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    title="Delete User"
+                  >
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -353,6 +613,17 @@ export const UserManagement = () => {
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm disabled:bg-gray-100"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Phone Number</label>
+            <input
+              type="tel"
+              value={formData.phoneNumber}
+              onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+              placeholder="+1234567890"
             />
           </div>
 

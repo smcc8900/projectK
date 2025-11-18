@@ -2,6 +2,7 @@ const functions = require('firebase-functions');
 const { createOrganizationAdmin } = require('./createAdmin');
 const { sendEmail } = require('./emailService');
 const admin = require('firebase-admin');
+const { getStorage } = require('firebase-admin/storage');
 
 // Initialize Firebase Admin only if not already initialized
 if (!admin.apps.length) {
@@ -13,6 +14,7 @@ exports.createOrganizationAdmin = createOrganizationAdmin;
 
 const db = admin.firestore();
 const auth = admin.auth();
+const storage = getStorage();
 
 /**
  * Cloud Function to set custom claims for a user
@@ -112,7 +114,10 @@ exports.createUser = functions.region('us-central1').https.onCall(async (data, c
       email,
       orgId,
       role,
-      profile: profile || {},
+      profile: {
+        ...(profile || {}),
+        phoneNumber: profile?.phoneNumber || '',
+      },
       isActive: true,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -177,15 +182,90 @@ exports.deleteUser = functions.region('us-central1').https.onCall(async (data, c
       );
     }
 
-    // Delete user from Firebase Auth
+    const orgId = userData.orgId;
+    const deletionResults = {
+      payslips: 0,
+      leaveRequests: 0,
+      attendance: 0,
+      timetables: 0,
+      profilePhoto: false,
+    };
+
+    // 1. Delete all payslips for this user
+    const payslipsSnapshot = await db.collection('payslips')
+      .where('userId', '==', userId)
+      .where('orgId', '==', orgId)
+      .get();
+    
+    const payslipDeletions = payslipsSnapshot.docs.map(doc => doc.ref.delete());
+    await Promise.all(payslipDeletions);
+    deletionResults.payslips = payslipsSnapshot.size;
+
+    // 2. Delete all leave requests for this user
+    const leaveRequestsSnapshot = await db.collection('leaveRequests')
+      .where('userId', '==', userId)
+      .where('organizationId', '==', orgId)
+      .get();
+    
+    const leaveRequestDeletions = leaveRequestsSnapshot.docs.map(doc => doc.ref.delete());
+    await Promise.all(leaveRequestDeletions);
+    deletionResults.leaveRequests = leaveRequestsSnapshot.size;
+
+    // 3. Delete all attendance records for this user
+    const attendanceSnapshot = await db.collection('attendance')
+      .where('userId', '==', userId)
+      .where('orgId', '==', orgId)
+      .get();
+    
+    const attendanceDeletions = attendanceSnapshot.docs.map(doc => doc.ref.delete());
+    await Promise.all(attendanceDeletions);
+    deletionResults.attendance = attendanceSnapshot.size;
+
+    // 4. Delete all timetable entries for this user (as teacher)
+    const timetablesSnapshot = await db.collection('timetables')
+      .where('teacherId', '==', userId)
+      .where('organizationId', '==', orgId)
+      .get();
+    
+    const timetableDeletions = timetablesSnapshot.docs.map(doc => doc.ref.delete());
+    await Promise.all(timetableDeletions);
+    deletionResults.timetables = timetablesSnapshot.size;
+
+    // 5. Delete profile photo from Storage if exists
+    if (userData.profile?.photoURL) {
+      try {
+        // Extract file path from photoURL
+        // photoURL format: https://firebasestorage.googleapis.com/v0/b/{bucket}/o/{path}?alt=media
+        const photoURL = userData.profile.photoURL;
+        const match = photoURL.match(/\/o\/(.+?)\?/);
+        if (match) {
+          const filePath = decodeURIComponent(match[1]);
+          const bucket = storage.bucket();
+          const file = bucket.file(filePath);
+          const [exists] = await file.exists();
+          if (exists) {
+            await file.delete();
+            deletionResults.profilePhoto = true;
+          }
+        }
+      } catch (storageError) {
+        console.warn('Error deleting profile photo:', storageError);
+        // Don't fail the entire deletion if photo deletion fails
+      }
+    }
+
+    // 6. Delete user document from Firestore
+    await db.collection('users').doc(userId).delete();
+
+    // 7. Delete user from Firebase Auth (do this last)
     await auth.deleteUser(userId);
 
-    // Delete user document from Firestore
-    await db.collection('users').doc(userId).delete();
+    console.log(`User ${userId} deleted successfully. Deleted:`, deletionResults);
 
     return {
       success: true,
-      message: 'User deleted successfully',
+      message: 'User and all associated data deleted successfully',
+      deletedData: deletionResults,
     };
   } catch (error) {
     console.error('Error deleting user:', error);
@@ -234,6 +314,102 @@ exports.onUserCreated = functions.firestore
     }
     
     return null;
+  });
+
+/**
+ * Trigger: When a user profile is updated, notify the user (and optionally admins)
+ */
+exports.onUserUpdated = functions.firestore
+  .document('users/{userId}')
+  .onUpdate(async (change, context) => {
+    const before = change.before.data();
+    const after = change.after.data();
+    const userId = context.params.userId;
+    
+    // Determine if profile fields changed (firstName, lastName, phone, department, designation, etc.)
+    const beforeProfile = before.profile || {};
+    const afterProfile = after.profile || {};
+    const profileChanged = JSON.stringify(beforeProfile) !== JSON.stringify(afterProfile);
+    
+    if (!profileChanged) {
+      return null;
+    }
+    
+    try {
+      const employeeName = afterProfile.firstName
+        ? `${afterProfile.firstName} ${afterProfile.lastName || ''}`.trim()
+        : after.email.split('@')[0];
+      
+      await sendEmail(
+        after.email,
+        'profileUpdatedToEmployee',
+        {
+          employeeName,
+          changes: Object.keys(afterProfile).map(k => ({
+            field: k,
+            before: beforeProfile[k],
+            after: afterProfile[k],
+          })),
+          updatedAt: new Date().toLocaleString(),
+        }
+      );
+      
+      return null;
+    } catch (error) {
+      console.error('Error sending profile update email:', error);
+      return null;
+    }
+  });
+
+/**
+ * Trigger: When an organization announcement is created, email target audience
+ * Collection: organizations/{orgId}/announcements/{announcementId}
+ */
+exports.onAnnouncementCreated = functions.firestore
+  .document('organizations/{orgId}/announcements/{announcementId}')
+  .onCreate(async (snap, context) => {
+    const announcement = snap.data();
+    const { orgId } = context.params;
+    
+    try {
+      // Determine recipients based on audience: 'all' | 'admins' | 'employees'
+      let roleFilter = null;
+      if (announcement.audience === 'admins') roleFilter = 'admin';
+      if (announcement.audience === 'employees') roleFilter = 'employee';
+      
+      let usersQuery = db.collection('users').where('orgId', '==', orgId);
+      if (roleFilter) {
+        usersQuery = usersQuery.where('role', '==', roleFilter);
+      }
+      
+      const usersSnap = await usersQuery.get();
+      if (usersSnap.empty) {
+        console.log('No recipients for announcement.');
+        return null;
+      }
+      
+      const emails = usersSnap.docs.map(d => d.data().email).filter(Boolean);
+      const orgDoc = await db.collection('organizations').doc(orgId).get();
+      const organizationName = orgDoc.exists ? (orgDoc.data().orgName || 'Your Organization') : 'Your Organization';
+      
+      await sendEmail(
+        emails,
+        'orgAnnouncementToUser',
+        {
+          organizationName,
+          title: announcement.title || 'Announcement',
+          message: announcement.message || '',
+          createdAt: new Date(announcement.createdAt?.toDate?.() || Date.now()).toLocaleString(),
+          createdBy: announcement.createdByName || 'Administrator',
+        }
+      );
+      
+      console.log(`Announcement email sent to ${emails.length} recipient(s)`);
+      return null;
+    } catch (error) {
+      console.error('Error sending announcement emails:', error);
+      return null;
+    }
   });
 
 /**

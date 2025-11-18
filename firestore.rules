@@ -15,6 +15,10 @@ service cloud.firestore {
       return request.auth.token.role == 'admin';
     }
     
+    function isSuperAdmin() {
+      return request.auth.token.role == 'superadmin';
+    }
+    
     function belongsToOrg(orgId) {
       return getOrgId() == orgId;
     }
@@ -24,44 +28,57 @@ service cloud.firestore {
       // Allow public read for domain-based organization lookup (before login)
       // This is needed for the login page to detect which org the domain belongs to
       allow read: if true;
-      // Only admins can write
-      allow write: if isAdmin() && belongsToOrg(orgId);
+      // Admins can write to their own org, super admins can write to any org
+      allow write: if (isAdmin() && belongsToOrg(orgId)) || isSuperAdmin();
+      // Super admins can delete any organization
+      allow delete: if isSuperAdmin() || (isAdmin() && belongsToOrg(orgId));
     }
     
     // Users
     match /users/{userId} {
       // Allow reading individual user document if user belongs to same org
       allow read: if isAuthenticated() && 
-                     belongsToOrg(resource.data.orgId);
+                     (belongsToOrg(resource.data.orgId) || isSuperAdmin());
       // Allow list queries (collection queries) for authenticated users
-      // Firestore will validate each document matches the user's orgId
+      // Firestore will validate each document matches the user's orgId or super admin can read all
       allow list: if isAuthenticated();
-      allow create: if isAdmin() && 
-                       belongsToOrg(request.resource.data.orgId);
-      // Allow users to update their own profile, or admins to update any user in their org
+      allow create: if (isAdmin() && 
+                       belongsToOrg(request.resource.data.orgId)) || 
+                       isSuperAdmin();
+      // Allow users to update their own profile, or admins to update any user in their org, or super admins
       allow update: if isAuthenticated() && 
                        (request.auth.uid == userId || 
-                        (isAdmin() && belongsToOrg(resource.data.orgId)));
-      allow delete: if isAdmin() && 
-                       belongsToOrg(resource.data.orgId);
+                        (isAdmin() && belongsToOrg(resource.data.orgId)) ||
+                        isSuperAdmin());
+      allow delete: if (isAdmin() && 
+                       belongsToOrg(resource.data.orgId)) || 
+                       isSuperAdmin();
     }
     
     // Payslips
     match /payslips/{payslipId} {
-      // Admin can read all in their org, employees can read their own
+      // Admin can read all in their org, employees can read their own, super admins can read all
       allow read: if isAuthenticated() && 
-                     belongsToOrg(resource.data.orgId) &&
-                     (isAdmin() || request.auth.uid == resource.data.userId);
-      allow create, update: if isAdmin() && 
-                               belongsToOrg(request.resource.data.orgId);
-      allow delete: if isAdmin() && 
-                       belongsToOrg(resource.data.orgId);
+                     ((belongsToOrg(resource.data.orgId) &&
+                     (isAdmin() || request.auth.uid == resource.data.userId)) ||
+                     isSuperAdmin());
+      // Allow list queries for authenticated users (super admins can read all via read permission)
+      allow list: if isAuthenticated();
+      allow create, update: if (isAdmin() && 
+                               belongsToOrg(request.resource.data.orgId)) ||
+                               isSuperAdmin();
+      allow delete: if (isAdmin() && 
+                       belongsToOrg(resource.data.orgId)) ||
+                       isSuperAdmin();
     }
     
     // Upload History
     match /uploadHistory/{batchId} {
-      allow read: if isAdmin() && belongsToOrg(resource.data.orgId);
-      allow create: if isAdmin() && belongsToOrg(request.resource.data.orgId);
+      allow read: if (isAdmin() && belongsToOrg(resource.data.orgId)) || isSuperAdmin();
+      // Allow list queries for authenticated users (super admins can read all via read permission)
+      allow list: if isAuthenticated();
+      allow create: if (isAdmin() && belongsToOrg(request.resource.data.orgId)) || isSuperAdmin();
+      allow delete: if (isAdmin() && belongsToOrg(resource.data.orgId)) || isSuperAdmin();
     }
     
     // Leave Requests
@@ -70,36 +87,57 @@ service cloud.firestore {
       allow create: if isAuthenticated() && 
                        belongsToOrg(request.resource.data.organizationId) &&
                        request.auth.uid == request.resource.data.userId;
-      // Employees can read their own requests, admins can read all in their org
+      // Employees can read their own requests, admins can read all in their org, super admins can read all
       allow read: if isAuthenticated() && 
-                     belongsToOrg(resource.data.organizationId) &&
-                     (isAdmin() || request.auth.uid == resource.data.userId);
-      // Only admins can update (approve/reject) leave requests
-      allow update: if isAdmin() && belongsToOrg(resource.data.organizationId);
-      // Only admins can delete leave requests
-      allow delete: if isAdmin() && belongsToOrg(resource.data.organizationId);
+                     ((belongsToOrg(resource.data.organizationId) &&
+                     (isAdmin() || request.auth.uid == resource.data.userId)) ||
+                     isSuperAdmin());
+      // Allow list queries for authenticated users (super admins can read all via read permission)
+      allow list: if isAuthenticated();
+      // Only admins can update (approve/reject) leave requests, or super admins
+      allow update: if (isAdmin() && belongsToOrg(resource.data.organizationId)) || isSuperAdmin();
+      // Only admins can delete leave requests, or super admins
+      allow delete: if (isAdmin() && belongsToOrg(resource.data.organizationId)) || isSuperAdmin();
+    }
+    
+    // Leaves (legacy collection name, if it exists)
+    match /leaves/{leaveId} {
+      allow read: if isAuthenticated() && 
+                     ((belongsToOrg(resource.data.orgId) ||
+                      belongsToOrg(resource.data.organizationId)) ||
+                     isSuperAdmin());
+      allow list: if isAuthenticated() || isSuperAdmin();
+      allow create, update, delete: if isSuperAdmin() || 
+                                       (isAdmin() && 
+                                        (belongsToOrg(resource.data.orgId) ||
+                                         belongsToOrg(resource.data.organizationId)));
     }
     
     // Leave Policies
     match /leavePolicies/{orgId} {
-      // Anyone in the org can read the leave policy
-      allow read: if isAuthenticated() && belongsToOrg(orgId);
-      // Only admins can create/update leave policies
-      allow write: if isAdmin() && belongsToOrg(orgId);
+      // Anyone in the org can read the leave policy, super admins can read all
+      allow read: if isAuthenticated() && (belongsToOrg(orgId) || isSuperAdmin());
+      // Only admins can create/update leave policies, or super admins
+      allow write: if (isAdmin() && belongsToOrg(orgId)) || isSuperAdmin();
     }
     
     // Timetables
     match /timetables/{timetableId} {
-      // Anyone in the org can read timetables
+      // Anyone in the org can read timetables, super admins can read all
       allow read: if isAuthenticated() && 
-                     belongsToOrg(resource.data.organizationId);
-      // Only admins can create/update/delete timetables
-      allow create: if isAdmin() && 
-                       belongsToOrg(request.resource.data.organizationId);
-      allow update: if isAdmin() && 
-                       belongsToOrg(resource.data.organizationId);
-      allow delete: if isAdmin() && 
-                       belongsToOrg(resource.data.organizationId);
+                     (belongsToOrg(resource.data.organizationId) || isSuperAdmin());
+      // Allow list queries for authenticated users (super admins can read all via read permission)
+      allow list: if isAuthenticated();
+      // Only admins can create/update/delete timetables, or super admins
+      allow create: if (isAdmin() && 
+                       belongsToOrg(request.resource.data.organizationId)) ||
+                       isSuperAdmin();
+      allow update: if (isAdmin() && 
+                       belongsToOrg(resource.data.organizationId)) ||
+                       isSuperAdmin();
+      allow delete: if (isAdmin() && 
+                       belongsToOrg(resource.data.organizationId)) ||
+                       isSuperAdmin();
     }
     
     // Attendance
@@ -108,16 +146,30 @@ service cloud.firestore {
       allow create: if isAuthenticated() && 
                        belongsToOrg(request.resource.data.orgId) &&
                        request.auth.uid == request.resource.data.userId;
-      // Employees can read their own attendance, admins can read all in their org
+      // Employees can read their own attendance, admins can read all in their org, super admins can read all
       allow read: if isAuthenticated() && 
-                     belongsToOrg(resource.data.orgId) &&
-                     (isAdmin() || request.auth.uid == resource.data.userId);
-      // Employees can update their own attendance (check-out), admins can update any
+                     ((belongsToOrg(resource.data.orgId) &&
+                     (isAdmin() || request.auth.uid == resource.data.userId)) ||
+                     isSuperAdmin());
+      // Allow list queries for authenticated users (super admins can read all via read permission)
+      allow list: if isAuthenticated();
+      // Employees can update their own attendance (check-out), admins can update any, super admins can update any
       allow update: if isAuthenticated() && 
-                       belongsToOrg(resource.data.orgId) &&
-                       (isAdmin() || request.auth.uid == resource.data.userId);
-      // Only admins can delete attendance records
-      allow delete: if isAdmin() && belongsToOrg(resource.data.orgId);
+                       ((belongsToOrg(resource.data.orgId) &&
+                       (isAdmin() || request.auth.uid == resource.data.userId)) ||
+                       isSuperAdmin());
+      // Only admins can delete attendance records, or super admins
+      allow delete: if (isAdmin() && belongsToOrg(resource.data.orgId)) || isSuperAdmin();
+    }
+    
+    // Announcements (subcollection of organizations)
+    match /organizations/{orgId}/announcements/{announcementId} {
+      // All authenticated users in the org can read announcements
+      allow read: if isAuthenticated() && (belongsToOrg(orgId) || isSuperAdmin());
+      // Only admins can create announcements, or super admins
+      allow create: if (isAdmin() && belongsToOrg(orgId)) || isSuperAdmin();
+      // Only admins can update/delete announcements, or super admins
+      allow update, delete: if (isAdmin() && belongsToOrg(orgId)) || isSuperAdmin();
     }
   }
 }

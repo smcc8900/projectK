@@ -3,7 +3,7 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
 export const ProtectedRoute = ({ children, requireAdmin = false }) => {
-  const { currentUser, userClaims, loading } = useAuth();
+  const { currentUser, userClaims, loading, organization } = useAuth();
 
   if (loading) {
     return (
@@ -18,6 +18,14 @@ export const ProtectedRoute = ({ children, requireAdmin = false }) => {
 
   if (!currentUser) {
     return <Navigate to="/login" />;
+  }
+
+  // Block non-superadmin users if organization is inactive
+  if (userClaims?.role !== 'superadmin') {
+    const status = organization?.subscription?.status || 'active';
+    if (status !== 'active') {
+      return <Navigate to="/login" />;
+    }
   }
 
   if (requireAdmin && userClaims?.role !== 'admin') {
