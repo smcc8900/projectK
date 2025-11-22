@@ -20,6 +20,7 @@ import { TimetableManagement } from './components/admin/TimetableManagement';
 import { LeaveManagement } from './components/admin/LeaveManagement';
 import { AttendanceManagement } from './components/admin/AttendanceManagement';
 import { Announcements } from './components/admin/Announcements';
+import { EmployeeAnnouncements } from './components/employee/Announcements';
 
 // Employee Components (also used by admins for their own payslips)
 import { Dashboard as EmployeeDashboard } from './components/employee/Dashboard';
@@ -41,14 +42,14 @@ const AppLayout = ({ children }) => {
       <div className="flex flex-1 pt-14 sm:pt-16">
         <Sidebar />
         <main className="flex-1 w-full min-w-0 flex flex-col">
-          <div className="flex-1 p-4 sm:p-6 lg:p-8 xl:p-12 pb-16">
-            <div className="max-w-7xl mx-auto">
+          <div className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 xl:p-12 pb-20 sm:pb-16">
+            <div className="max-w-7xl mx-auto w-full">
               {children}
             </div>
           </div>
           {/* Watermark Footer */}
-          <div className="bg-white border-t border-gray-200 py-3 px-4 sm:px-6 lg:px-8">
-            <p className="text-center text-sm text-gray-500">
+          <div className="bg-white border-t border-gray-200 py-2 sm:py-3 px-3 sm:px-4 lg:px-8">
+            <p className="text-center text-xs sm:text-sm text-gray-500">
               Made by <span className="font-semibold text-primary-600">OFDLabs</span> with <span className="text-red-500">❤</span>
             </p>
           </div>
@@ -247,6 +248,16 @@ function App() {
               <ProtectedRoute>
                 <AppLayout>
                   <HelpSupport />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/employee/announcements"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <EmployeeAnnouncements />
                 </AppLayout>
               </ProtectedRoute>
             }

@@ -274,7 +274,7 @@ export const Profile = () => {
           <form onSubmit={handleUpdateProfile} className="p-4 sm:p-6 space-y-4 sm:space-y-5">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   First Name *
                 </label>
                 <input
@@ -282,11 +282,11 @@ export const Profile = () => {
                   required
                   value={profileData.firstName}
                   onChange={(e) => handleProfileChange('firstName', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors sm:text-sm"
+                  className="w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors min-h-[44px] sm:min-h-0"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   Last Name *
                 </label>
                 <input
@@ -294,13 +294,13 @@ export const Profile = () => {
                   required
                   value={profileData.lastName}
                   onChange={(e) => handleProfileChange('lastName', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors sm:text-sm"
+                  className="w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors min-h-[44px] sm:min-h-0"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 <Mail className="w-4 h-4 inline mr-1" />
                 Email Address *
               </label>
@@ -309,15 +309,15 @@ export const Profile = () => {
                 required
                   value={profileData.email}
                   onChange={(e) => handleProfileChange('email', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors sm:text-sm"
+                  className="w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors min-h-[44px] sm:min-h-0"
               />
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1.5 text-xs text-gray-500">
                 You may need to log out and log back in after changing your email
               </p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 <Badge className="w-4 h-4 inline mr-1" />
                 Employee ID
               </label>
@@ -326,15 +326,15 @@ export const Profile = () => {
                 value={profileData.employeeId}
                 readOnly
                 disabled
-                className="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-lg shadow-sm text-gray-500 sm:text-sm"
+                className="w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm border border-gray-200 bg-gray-50 rounded-lg shadow-sm text-gray-500 min-h-[44px] sm:min-h-0"
                 placeholder="EMP001"
               />
-              <p className="mt-1 text-xs text-gray-400">Contact admin to change Employee ID</p>
+              <p className="mt-1.5 text-xs text-gray-400">Contact admin to change Employee ID</p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   Department
                 </label>
                 <input
@@ -342,11 +342,11 @@ export const Profile = () => {
                   value={profileData.department}
                   readOnly
                   disabled
-                  className="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-lg shadow-sm text-gray-500 sm:text-sm"
+                  className="w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm border border-gray-200 bg-gray-50 rounded-lg shadow-sm text-gray-500 min-h-[44px] sm:min-h-0"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   Designation
                 </label>
                 <input
@@ -354,7 +354,7 @@ export const Profile = () => {
                   value={profileData.designation}
                   readOnly
                   disabled
-                  className="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-lg shadow-sm text-gray-500 sm:text-sm"
+                  className="w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm border border-gray-200 bg-gray-50 rounded-lg shadow-sm text-gray-500 min-h-[44px] sm:min-h-0"
                 />
               </div>
             </div>
@@ -363,7 +363,7 @@ export const Profile = () => {
               <button
                 type="submit"
                 disabled={saving}
-                className="w-full flex items-center justify-center px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm hover:shadow-md font-medium"
+                className="w-full flex items-center justify-center px-4 py-2.5 sm:py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 active:bg-primary-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm hover:shadow-md font-medium min-h-[44px] sm:min-h-0"
               >
                 <Save className="w-4 h-4 mr-2" />
                 {saving ? 'Saving...' : 'Save Profile Changes'}

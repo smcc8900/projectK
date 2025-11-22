@@ -61,7 +61,7 @@ export const FileUploader = ({ onFileSelect, accept = '.xlsx,.xls', maxSize = 5 
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
-        className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+        className={`border-2 border-dashed rounded-lg p-4 sm:p-6 md:p-8 text-center transition-colors ${
           isDragging
             ? 'border-primary-500 bg-primary-50'
             : 'border-gray-300 hover:border-gray-400'
@@ -77,24 +77,24 @@ export const FileUploader = ({ onFileSelect, accept = '.xlsx,.xls', maxSize = 5 
 
         {!selectedFile ? (
           <div>
-            <Upload className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-            <p className="mb-2 text-sm text-gray-600">
+            <Upload className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 sm:mb-4 text-gray-400" />
+            <p className="mb-2 text-xs sm:text-sm text-gray-600">
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="font-medium text-primary-600 hover:text-primary-700"
+                className="font-medium text-primary-600 hover:text-primary-700 underline"
               >
-                Click to upload
-              </button>{' '}
-              or drag and drop
+                Tap to upload
+              </button>
+              <span className="hidden sm:inline"> or drag and drop</span>
             </p>
             <p className="text-xs text-gray-500">Excel files only (MAX. {maxSize / 1024 / 1024}MB)</p>
           </div>
         ) : (
-          <div className="flex items-center justify-center space-x-3">
-            <File className="w-8 h-8 text-green-500" />
-            <div className="flex-1 text-left">
-              <p className="text-sm font-medium text-gray-900">{selectedFile.name}</p>
+          <div className="flex items-center justify-center space-x-2 sm:space-x-3">
+            <File className="w-6 h-6 sm:w-8 sm:h-8 text-green-500 flex-shrink-0" />
+            <div className="flex-1 text-left min-w-0">
+              <p className="text-xs sm:text-sm font-medium text-gray-900 truncate">{selectedFile.name}</p>
               <p className="text-xs text-gray-500">
                 {(selectedFile.size / 1024).toFixed(2)} KB
               </p>
@@ -102,7 +102,8 @@ export const FileUploader = ({ onFileSelect, accept = '.xlsx,.xls', maxSize = 5 
             <button
               type="button"
               onClick={removeFile}
-              className="text-red-500 hover:text-red-700"
+              className="text-red-500 hover:text-red-700 p-1 flex-shrink-0"
+              aria-label="Remove file"
             >
               <X className="w-5 h-5" />
             </button>
@@ -111,7 +112,7 @@ export const FileUploader = ({ onFileSelect, accept = '.xlsx,.xls', maxSize = 5 
       </div>
 
       {error && (
-        <p className="mt-2 text-sm text-red-600">{error}</p>
+        <p className="mt-2 text-xs sm:text-sm text-red-600">{error}</p>
       )}
     </div>
   );

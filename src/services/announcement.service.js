@@ -7,7 +7,8 @@ import {
   orderBy, 
   serverTimestamp,
   doc,
-  getDoc
+  getDoc,
+  deleteDoc
 } from 'firebase/firestore';
 import { db } from './firebase';
 
@@ -88,6 +89,26 @@ export const createAnnouncement = async (orgId, announcementData, createdByUserI
     };
   } catch (error) {
     console.error('Error creating announcement:', error);
+    throw error;
+  }
+};
+
+/**
+ * Delete an announcement
+ * @param {string} orgId
+ * @param {string} announcementId
+ */
+export const deleteAnnouncement = async (orgId, announcementId) => {
+  try {
+    if (!orgId || !announcementId) {
+      throw new Error('Organization ID and announcement ID are required');
+    }
+
+    const announcementRef = doc(db, 'organizations', orgId, 'announcements', announcementId);
+    await deleteDoc(announcementRef);
+    return true;
+  } catch (error) {
+    console.error('Error deleting announcement:', error);
     throw error;
   }
 };

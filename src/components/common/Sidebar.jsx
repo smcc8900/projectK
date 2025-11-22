@@ -38,6 +38,7 @@ export const Sidebar = () => {
 
   const employeeLinks = [
     { to: '/employee/dashboard', icon: LayoutDashboard, label: 'Dashboard', feature: null },
+    { to: '/employee/announcements', icon: Megaphone, label: 'Announcements', feature: null },
     { to: '/employee/payslips', icon: Wallet, label: 'My Payslips', feature: 'payslips' },
     { to: '/employee/attendance', icon: Clock, label: 'My Attendance', feature: null },
     { to: '/employee/timetable', icon: Calendar, label: 'Timetable', feature: 'timetable' },

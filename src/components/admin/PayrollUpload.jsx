@@ -71,17 +71,17 @@ export const PayrollUpload = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Upload Payroll Data</h1>
+    <div className="space-y-4 sm:space-y-6">
+      <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Upload Payroll Data</h1>
 
       {/* File Upload Section */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">Select Excel File</h2>
+      <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+        <h2 className="text-base sm:text-lg font-medium text-gray-900 mb-3 sm:mb-4">Select Excel File</h2>
         <FileUploader onFileSelect={handleFileSelect} />
         
         <div className="mt-4">
-          <h3 className="text-sm font-medium text-gray-700 mb-2">Expected Excel Format:</h3>
-          <div className="bg-gray-50 p-4 rounded text-xs overflow-x-auto">
+          <h3 className="text-xs sm:text-sm font-medium text-gray-700 mb-2">Expected Excel Format:</h3>
+          <div className="bg-gray-50 p-2 sm:p-4 rounded text-xs overflow-x-auto -mx-2 sm:mx-0">
             <table className="min-w-full divide-y divide-gray-200">
               <thead>
                 <tr>
@@ -123,10 +123,10 @@ export const PayrollUpload = () => {
 
       {/* Validation Results */}
       {validationResults && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Validation Results</h2>
+        <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+          <h2 className="text-base sm:text-lg font-medium text-gray-900 mb-3 sm:mb-4">Validation Results</h2>
           
-          <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-6">
             <div className="bg-blue-50 p-4 rounded-lg">
               <p className="text-sm text-blue-600 font-medium">Total Rows</p>
               <p className="text-2xl font-bold text-blue-900">{validationResults.totalRows}</p>
@@ -165,7 +165,7 @@ export const PayrollUpload = () => {
               <button
                 onClick={handleUpload}
                 disabled={loading}
-                className="flex items-center px-6 py-3 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full sm:w-auto flex items-center justify-center px-6 py-3 bg-primary-600 text-white rounded-md hover:bg-primary-700 active:bg-primary-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors min-h-[44px] sm:min-h-0"
               >
                 <Upload className="w-5 h-5 mr-2" />
                 {loading ? 'Processing...' : `Process ${validationResults.validRows} Records`}
@@ -177,10 +177,10 @@ export const PayrollUpload = () => {
 
       {/* Upload Results */}
       {uploadResults && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Upload Results</h2>
+        <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+          <h2 className="text-base sm:text-lg font-medium text-gray-900 mb-3 sm:mb-4">Upload Results</h2>
           
-          <div className="grid grid-cols-2 gap-4 mb-6">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4 mb-4 sm:mb-6">
             <div className="bg-green-50 p-4 rounded-lg flex items-center">
               <CheckCircle className="w-8 h-8 text-green-500 mr-3" />
               <div>

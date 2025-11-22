@@ -6,7 +6,7 @@ import { Modal } from '../shared/Modal';
 import { FileUploader } from '../shared/FileUploader';
 import { processUserExcelUpload, validateUserExcelBeforeUpload } from '../../services/user.service';
 import toast from 'react-hot-toast';
-import { UserPlus, Edit, UserX, UserCheck, Eye, EyeOff, Upload, FileSpreadsheet, Trash2 } from 'lucide-react';
+import { UserPlus, Edit, UserX, UserCheck, Eye, EyeOff, Upload, FileSpreadsheet, Trash2, X } from 'lucide-react';
 
 export const UserManagement = () => {
   const { userClaims, currentUser } = useAuth();
@@ -289,27 +289,34 @@ export const UserManagement = () => {
     {
       header: 'Actions',
       render: (row) => (
-        <div className="flex space-x-2">
+        <div className="flex space-x-1 sm:space-x-2">
           <button
             onClick={(e) => { e.stopPropagation(); openModal(row); }}
-            className="text-blue-600 hover:text-blue-900"
+            className="p-1.5 sm:p-1 text-blue-600 hover:text-blue-900 active:bg-blue-50 rounded transition-colors"
             title="Edit"
+            aria-label="Edit user"
           >
-            <Edit className="w-4 h-4" />
+            <Edit className="w-4 h-4 sm:w-4 sm:h-4" />
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); handleToggleStatus(row); }}
-            className={row.isActive ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'}
+            className={`p-1.5 sm:p-1 rounded transition-colors ${
+              row.isActive 
+                ? 'text-red-600 hover:text-red-900 active:bg-red-50' 
+                : 'text-green-600 hover:text-green-900 active:bg-green-50'
+            }`}
             title={row.isActive ? 'Deactivate' : 'Activate'}
+            aria-label={row.isActive ? 'Deactivate user' : 'Activate user'}
           >
-            {row.isActive ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
+            {row.isActive ? <UserX className="w-4 h-4 sm:w-4 sm:h-4" /> : <UserCheck className="w-4 h-4 sm:w-4 sm:h-4" />}
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); handleDeleteUser(row); }}
-            className="text-red-600 hover:text-red-900"
+            className="p-1.5 sm:p-1 text-red-600 hover:text-red-900 active:bg-red-50 rounded transition-colors"
             title="Delete User"
+            aria-label="Delete user"
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="w-4 h-4 sm:w-4 sm:h-4" />
           </button>
         </div>
       ),
@@ -330,21 +337,21 @@ export const UserManagement = () => {
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">User Management</h1>
-        <div className="flex gap-3">
+      <div className="flex flex-col gap-3 sm:gap-4">
+        <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">User Management</h1>
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
           <button
             onClick={() => setShowBulkUpload(!showBulkUpload)}
-            className="flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm hover:shadow-md"
+            className="flex items-center justify-center px-4 py-2.5 sm:py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 active:bg-green-800 transition-colors shadow-sm hover:shadow-md text-sm sm:text-base min-h-[44px] sm:min-h-0"
           >
-            <FileSpreadsheet className="w-5 h-5 mr-2" />
+            <FileSpreadsheet className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
             <span className="whitespace-nowrap">Bulk Upload</span>
           </button>
           <button
             onClick={() => openModal()}
-            className="flex items-center justify-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-sm hover:shadow-md"
+            className="flex items-center justify-center px-4 py-2.5 sm:py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 active:bg-primary-800 transition-colors shadow-sm hover:shadow-md text-sm sm:text-base min-h-[44px] sm:min-h-0"
           >
-            <UserPlus className="w-5 h-5 mr-2" />
+            <UserPlus className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
             <span className="whitespace-nowrap">Add User</span>
           </button>
         </div>
@@ -352,9 +359,9 @@ export const UserManagement = () => {
 
       {/* Bulk Upload Section */}
       {showBulkUpload && (
-        <div className="bg-white rounded-lg shadow p-6 space-y-6">
+        <div className="bg-white rounded-lg shadow p-4 sm:p-6 space-y-4 sm:space-y-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-medium text-gray-900">Bulk Upload Users</h2>
+            <h2 className="text-base sm:text-lg font-medium text-gray-900">Bulk Upload Users</h2>
             <button
               onClick={() => {
                 setShowBulkUpload(false);
@@ -362,9 +369,10 @@ export const UserManagement = () => {
                 setValidationResults(null);
                 setUploadResults(null);
               }}
-              className="text-gray-500 hover:text-gray-700"
+              className="text-gray-500 hover:text-gray-700 p-1 -mr-1"
+              aria-label="Close"
             >
-              ✕
+              <X className="w-5 h-5" />
             </button>
           </div>
 
@@ -441,7 +449,7 @@ export const UserManagement = () => {
                 <button
                   onClick={handleBulkUpload}
                   disabled={uploadLoading}
-                  className="flex items-center px-6 py-3 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full sm:w-auto flex items-center justify-center px-6 py-3 bg-primary-600 text-white rounded-md hover:bg-primary-700 active:bg-primary-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors min-h-[44px]"
                 >
                   <Upload className="w-5 h-5 mr-2" />
                   {uploadLoading ? 'Processing...' : `Process ${validationResults.validRows} Users`}
@@ -513,11 +521,12 @@ export const UserManagement = () => {
                     <p className="text-xs text-gray-400 mt-1">ID: {user.profile.employeeId}</p>
                   )}
                 </div>
-                <div className="flex space-x-2 ml-2">
+                <div className="flex space-x-1 sm:space-x-2 ml-2 flex-shrink-0">
                   <button
                     onClick={(e) => { e.stopPropagation(); openModal(user); }}
-                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                    className="p-2 text-blue-600 hover:bg-blue-50 active:bg-blue-100 rounded-lg transition-colors"
                     title="Edit"
+                    aria-label="Edit user"
                   >
                     <Edit className="w-4 h-4" />
                   </button>
@@ -525,17 +534,19 @@ export const UserManagement = () => {
                     onClick={(e) => { e.stopPropagation(); handleToggleStatus(user); }}
                     className={`p-2 rounded-lg transition-colors ${
                       user.isActive 
-                        ? 'text-red-600 hover:bg-red-50' 
-                        : 'text-green-600 hover:bg-green-50'
+                        ? 'text-red-600 hover:bg-red-50 active:bg-red-100' 
+                        : 'text-green-600 hover:bg-green-50 active:bg-green-100'
                     }`}
                     title={user.isActive ? 'Deactivate' : 'Activate'}
+                    aria-label={user.isActive ? 'Deactivate user' : 'Activate user'}
                   >
                     {user.isActive ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
                   </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); handleDeleteUser(user); }}
-                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    className="p-2 text-red-600 hover:bg-red-50 active:bg-red-100 rounded-lg transition-colors"
                     title="Delete User"
+                    aria-label="Delete user"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -582,29 +593,29 @@ export const UserManagement = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700">First Name *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">First Name *</label>
               <input
                 type="text"
                 required
                 value={formData.firstName}
                 onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                className="block w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 min-h-[44px] sm:min-h-0"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Last Name *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Last Name *</label>
               <input
                 type="text"
                 required
                 value={formData.lastName}
                 onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                className="block w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 min-h-[44px] sm:min-h-0"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Email *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Email *</label>
             <input
               type="email"
               required
@@ -612,65 +623,65 @@ export const UserManagement = () => {
               autoComplete="off"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm disabled:bg-gray-100"
+              className="block w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:bg-gray-100 min-h-[44px] sm:min-h-0"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Phone Number</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Phone Number</label>
             <input
               type="tel"
               value={formData.phoneNumber}
               onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+              className="block w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 min-h-[44px] sm:min-h-0"
               placeholder="+1234567890"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700">Employee ID</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Employee ID</label>
               <input
                 type="text"
                 value={formData.employeeId}
                 onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                className="block w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 min-h-[44px] sm:min-h-0"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Department</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Department</label>
               <input
                 type="text"
                 value={formData.department}
                 onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                className="block w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 min-h-[44px] sm:min-h-0"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Designation</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Designation</label>
             <input
               type="text"
               value={formData.designation}
               onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+              className="block w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 min-h-[44px] sm:min-h-0"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Role *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Role *</label>
             <select
               value={formData.role}
               onChange={(e) => setFormData({ ...formData, role: e.target.value })}
               disabled={!!editingUser && editingUser.role === 'admin'}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm disabled:bg-gray-100"
+              className="block w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:bg-gray-100 min-h-[44px] sm:min-h-0"
             >
               <option value="employee">Employee</option>
               <option value="admin">Admin</option>
             </select>
             {!editingUser && (
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1.5 text-xs text-gray-500">
                 You can create additional admins for your organization
               </p>
             )}
@@ -678,8 +689,8 @@ export const UserManagement = () => {
           
           {!editingUser && (
             <div>
-              <label className="block text-sm font-medium text-gray-700">Temporary Password *</label>
-              <div className="mt-1 relative">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Temporary Password *</label>
+              <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}
                   required
@@ -687,13 +698,14 @@ export const UserManagement = () => {
                   autoComplete="new-password"
                   value={formData.tempPassword || ''}
                   onChange={(e) => setFormData({ ...formData, tempPassword: e.target.value })}
-                  className="block w-full px-3 py-2 pr-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                  className="block w-full px-3 py-2.5 sm:py-2 pr-10 text-base sm:text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 min-h-[44px] sm:min-h-0"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700 active:text-gray-900"
                   tabIndex={-1}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? (
                     <EyeOff className="h-5 w-5" />
@@ -702,7 +714,7 @@ export const UserManagement = () => {
                   )}
                 </button>
               </div>
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1.5 text-xs text-gray-500">
                 User will be required to change this password on first login
               </p>
             </div>
@@ -712,13 +724,13 @@ export const UserManagement = () => {
             <button
               type="button"
               onClick={closeModal}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              className="w-full sm:w-auto px-4 py-2.5 sm:py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors min-h-[44px] sm:min-h-0"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 transition-colors shadow-sm hover:shadow-md"
+              className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 active:bg-primary-800 transition-colors shadow-sm hover:shadow-md min-h-[44px] sm:min-h-0"
             >
               {editingUser ? 'Update' : 'Create'}
             </button>

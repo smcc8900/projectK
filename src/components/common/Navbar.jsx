@@ -17,7 +17,8 @@ import {
   Calendar,
   ClipboardList,
   UserCheck,
-  CalendarCheck
+  CalendarCheck,
+  Megaphone
 } from 'lucide-react';
 
 export const Navbar = () => {
@@ -54,6 +55,7 @@ export const Navbar = () => {
 
   const employeeLinks = [
     { to: '/employee/dashboard', icon: LayoutDashboard, label: 'Dashboard', feature: null },
+    { to: '/employee/announcements', icon: Megaphone, label: 'Announcements', feature: null },
     { to: '/employee/payslips', icon: Wallet, label: 'My Payslips', feature: 'payslips' },
     { to: '/employee/timetable', icon: Calendar, label: 'Timetable', feature: 'timetable' },
     { to: '/employee/leaves', icon: CalendarCheck, label: 'Leave Management', feature: 'leaves' },
@@ -69,8 +71,8 @@ export const Navbar = () => {
       <div className="px-3 sm:px-4 lg:px-6 mx-auto w-full">
         <div className="flex justify-between items-center h-14">
           {/* Left side - Logo/Title */}
-          <div className="flex items-center min-w-0 flex-1">
-            <h1 className="text-base sm:text-lg font-bold text-primary-600 truncate">
+          <div className="flex items-center min-w-0 flex-1 pr-2">
+            <h1 className="text-sm sm:text-base md:text-lg font-bold text-primary-600 truncate">
               {displayName}
             </h1>
           </div>
