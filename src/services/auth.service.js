@@ -1,4 +1,4 @@
-import { 
+import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
@@ -54,6 +54,7 @@ export const registerOrganization = async (orgData, adminData) => {
         designation: 'Administrator',
         joiningDate: serverTimestamp(),
       },
+      branchId: adminData.branchId || null,
       isActive: true,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
@@ -72,16 +73,16 @@ export const registerOrganization = async (orgData, adminData) => {
       await userCredential.user.getIdToken(true);
     } catch (error) {
       console.error('Error setting custom claims:', error);
-      
+
       // Provide more helpful error messages
       if (error.code === 'functions/not-found') {
         throw new Error('Cloud Functions not found. Please ensure functions are deployed. Run: firebase deploy --only functions');
       }
-      
+
       if (error.code === 'functions/unavailable' || error.message?.includes('CORS')) {
         throw new Error('CORS Error: Functions may not be deployed. Please deploy functions first: firebase deploy --only functions');
       }
-      
+
       // Re-throw to be caught by outer catch
       throw error;
     }
@@ -99,7 +100,7 @@ export const registerOrganization = async (orgData, adminData) => {
 export const login = async (email, password) => {
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    
+
     // Verify user has claims
     const idTokenResult = await userCredential.user.getIdTokenResult();
     if (!idTokenResult.claims.orgId || !idTokenResult.claims.role) {
@@ -109,7 +110,7 @@ export const login = async (email, password) => {
     return userCredential;
   } catch (error) {
     console.error('Error logging in:', error);
-    
+
     // Provide user-friendly error messages
     if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
       throw new Error('Invalid email or password. Please check your credentials and try again.');
@@ -120,7 +121,7 @@ export const login = async (email, password) => {
     } else if (error.code === 'auth/network-request-failed') {
       throw new Error('Network error. Please check your internet connection.');
     }
-    
+
     throw error;
   }
 };

@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { 
-  Building2, 
-  Users, 
-  TrendingUp, 
+import {
+  Building2,
+  Users,
+  TrendingUp,
   Activity,
   Settings,
   Plus,
@@ -17,8 +17,8 @@ import {
   LogOut
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { 
-  getAllOrganizations, 
+import {
+  getAllOrganizations,
   getOrganizationStats,
   getUserCountByOrg,
   deleteOrganization,
@@ -26,6 +26,7 @@ import {
 } from '../../services/superadmin.service';
 import { OnboardCustomer } from './OnboardCustomer';
 import { ManageFeatures } from './ManageFeatures';
+import { ManageBranches } from './ManageBranches';
 
 export const SuperAdminDashboard = () => {
   const { currentUser, signOut } = useAuth();
@@ -55,7 +56,7 @@ export const SuperAdminDashboard = () => {
         getAllOrganizations(),
         getOrganizationStats(),
       ]);
-      
+
       // Get user counts for each org
       const orgsWithCounts = await Promise.all(
         orgsData.map(async (org) => {
@@ -63,7 +64,7 @@ export const SuperAdminDashboard = () => {
           return { ...org, userCount };
         })
       );
-      
+
       setOrganizations(orgsWithCounts);
       setStats(statsData);
     } catch (error) {
@@ -79,11 +80,11 @@ export const SuperAdminDashboard = () => {
       toast.error('Cannot delete OFD Labs organization!');
       return;
     }
-    
+
     try {
       setDeleting(true);
       const result = await deleteOrganization(org.id);
-      
+
       toast.success(
         `Successfully deleted ${org.orgName}!\n` +
         `Removed: ${result.deletedUsers} users, ${result.deletedPayslips} payslips, ` +
@@ -91,7 +92,7 @@ export const SuperAdminDashboard = () => {
         `${result.deletedLeaves} leaves, ${result.deletedAttendance} attendance records`,
         { duration: 6000 }
       );
-      
+
       setDeleteConfirm(null);
       await loadData(); // Reload data
     } catch (error) {
@@ -228,11 +229,10 @@ export const SuperAdminDashboard = () => {
                     {org.domain}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                      org.type === 'education' ? 'bg-blue-100 text-blue-800' :
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${org.type === 'education' ? 'bg-blue-100 text-blue-800' :
                       org.type === 'corporate' ? 'bg-green-100 text-green-800' :
-                      'bg-purple-100 text-purple-800'
-                    }`}>
+                        'bg-purple-100 text-purple-800'
+                      }`}>
                       {org.type || 'full'}
                     </span>
                   </td>
@@ -275,11 +275,10 @@ export const SuperAdminDashboard = () => {
                             toast.error('Failed to update organization status');
                           }
                         }}
-                        className={`px-3 py-1 rounded text-sm font-medium ${
-                          org.subscription?.status === 'active'
-                            ? 'text-orange-700 bg-orange-50 hover:bg-orange-100'
-                            : 'text-green-700 bg-green-50 hover:bg-green-100'
-                        }`}
+                        className={`px-3 py-1 rounded text-sm font-medium ${org.subscription?.status === 'active'
+                          ? 'text-orange-700 bg-orange-50 hover:bg-orange-100'
+                          : 'text-green-700 bg-green-50 hover:bg-green-100'
+                          }`}
                         title={org.subscription?.status === 'active' ? 'Set Inactive' : 'Set Active'}
                       >
                         {org.subscription?.status === 'active' ? 'Set Inactive' : 'Set Active'}
@@ -364,33 +363,39 @@ export const SuperAdminDashboard = () => {
           <div className="flex space-x-8">
             <button
               onClick={() => setActiveTab('overview')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'overview'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'overview'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
             >
               Overview
             </button>
             <button
               onClick={() => setActiveTab('onboard')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'onboard'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'onboard'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
             >
               Onboard Customer
             </button>
             <button
               onClick={() => setActiveTab('features')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'features'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'features'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
             >
               Manage Features
+            </button>
+            <button
+              onClick={() => setActiveTab('branches')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'branches'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+            >
+              Manage Branches
             </button>
           </div>
         </div>
@@ -403,11 +408,34 @@ export const SuperAdminDashboard = () => {
           <OnboardCustomer onSuccess={loadData} />
         )}
         {activeTab === 'features' && (
-          <ManageFeatures 
+          <ManageFeatures
             organizations={organizations}
             selectedOrg={selectedOrg}
             onUpdate={loadData}
           />
+        )}
+        {activeTab === 'branches' && (
+          <div className="space-y-6">
+            <div className="bg-white p-6 rounded-lg shadow mb-6">
+              <h2 className="text-lg font-semibold mb-4">Select Organization</h2>
+              <select
+                className="w-full p-2 border rounded-lg"
+                onChange={(e) => {
+                  const org = organizations.find(o => o.id === e.target.value);
+                  setSelectedOrg(org);
+                }}
+                value={selectedOrg?.id || ''}
+              >
+                <option value="">Select an organization...</option>
+                {organizations.map(org => (
+                  <option key={org.id} value={org.id}>{org.orgName} ({org.domain})</option>
+                ))}
+              </select>
+            </div>
+            {selectedOrg && (
+              <ManageBranches orgId={selectedOrg.id} orgName={selectedOrg.orgName} />
+            )}
+          </div>
         )}
       </div>
 
@@ -429,7 +457,7 @@ export const SuperAdminDashboard = () => {
               <p className="text-gray-700 mb-4">
                 Are you sure you want to delete <strong>{deleteConfirm.orgName}</strong>?
               </p>
-              
+
               <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                 <p className="text-sm text-red-800 font-medium mb-2">This will permanently delete:</p>
                 <ul className="text-sm text-red-700 space-y-1">

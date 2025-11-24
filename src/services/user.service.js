@@ -1,15 +1,15 @@
-import { 
-  collection, 
-  doc, 
+import {
+  collection,
+  doc,
   getDoc,
-  getDocs, 
-  setDoc, 
-  updateDoc, 
+  getDocs,
+  setDoc,
+  updateDoc,
   deleteDoc,
-  query, 
+  query,
   where,
   orderBy,
-  serverTimestamp 
+  serverTimestamp
 } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from './firebase';
@@ -27,6 +27,7 @@ export const createUser = async (userData, orgId) => {
       password: userData.tempPassword,
       orgId,
       role: userData.role || 'employee',
+      branchId: userData.branchId || null,
       profile: {
         firstName: userData.firstName,
         lastName: userData.lastName,
@@ -41,20 +42,20 @@ export const createUser = async (userData, orgId) => {
     return result.data;
   } catch (error) {
     console.error('Error creating user:', error);
-    
+
     // Provide more helpful error messages
     if (error.code === 'functions/not-found') {
       throw new Error('Cloud Functions not found. Please ensure functions are deployed. Run: firebase deploy --only functions');
     }
-    
+
     if (error.code === 'functions/unavailable') {
       throw new Error('Cloud Functions are unavailable. Please check your internet connection and try again.');
     }
-    
+
     if (error.message?.includes('CORS') || error.code === 'functions/unauthenticated') {
       throw new Error('CORS Error: Functions may not be deployed. Please deploy functions first: firebase deploy --only functions');
     }
-    
+
     // Re-throw the original error with its message
     throw new Error(error.message || 'Failed to create user. Please try again.');
   }
@@ -65,32 +66,32 @@ export const getUsers = async (orgId) => {
     // Import auth to check token
     const { auth } = await import('./firebase');
     const currentUser = auth.currentUser;
-    
+
     if (!currentUser) {
       throw new Error('User not authenticated. Please log in and try again.');
     }
-    
+
     // Verify user has orgId in token
     const idTokenResult = await currentUser.getIdTokenResult(true); // Force refresh
     const userOrgId = idTokenResult.claims.orgId;
-    
+
     if (!userOrgId) {
       throw new Error('User missing organization ID. Please contact support to set up your account.');
     }
-    
+
     if (userOrgId !== orgId) {
       throw new Error(`Permission denied. Your organization (${userOrgId}) does not match requested organization (${orgId}).`);
     }
-    
+
     const usersRef = collection(db, 'users');
-    
+
     // Try with orderBy first, fallback to without if index missing
     let q = query(
-      usersRef, 
+      usersRef,
       where('orgId', '==', orgId),
       orderBy('createdAt', 'desc')
     );
-    
+
     try {
       const snapshot = await getDocs(q);
       const users = snapshot.docs.map(doc => ({
@@ -160,7 +161,7 @@ export const getUserByEmail = async (email, orgId) => {
       where('email', '==', email),
       where('orgId', '==', orgId)
     );
-    
+
     const snapshot = await getDocs(q);
     if (!snapshot.empty) {
       const doc = snapshot.docs[0];
@@ -211,20 +212,20 @@ export const deleteUser = async (userId) => {
     await deleteUserFunction({ userId });
   } catch (error) {
     console.error('Error deleting user:', error);
-    
+
     // Provide more helpful error messages
     if (error.code === 'functions/not-found') {
       throw new Error('Cloud Functions not found. Please ensure functions are deployed. Run: firebase deploy --only functions');
     }
-    
+
     if (error.code === 'functions/unavailable') {
       throw new Error('Cloud Functions are unavailable. Please check your internet connection and try again.');
     }
-    
+
     if (error.message?.includes('CORS') || error.code === 'functions/unauthenticated') {
       throw new Error('CORS Error: Functions may not be deployed. Please deploy functions first: firebase deploy --only functions');
     }
-    
+
     // Re-throw the original error with its message
     throw new Error(error.message || 'Failed to delete user. Please try again.');
   }
@@ -238,7 +239,7 @@ export const getActiveEmployees = async (orgId) => {
       where('orgId', '==', orgId),
       where('isActive', '==', true)
     );
-    
+
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({
       id: doc.id,
@@ -255,19 +256,19 @@ export const checkEmployeeIdUnique = async (employeeId, orgId, excludeUserId = n
     if (!employeeId || !orgId) {
       return { unique: true, exists: false };
     }
-    
+
     const usersRef = collection(db, 'users');
     const q = query(
       usersRef,
       where('orgId', '==', orgId),
       where('profile.employeeId', '==', employeeId.toUpperCase())
     );
-    
+
     const snapshot = await getDocs(q);
     const matchingUsers = snapshot.docs
       .filter(doc => !excludeUserId || doc.id !== excludeUserId)
       .map(doc => ({ id: doc.id, ...doc.data() }));
-    
+
     return {
       unique: matchingUsers.length === 0,
       exists: matchingUsers.length > 0,
@@ -286,7 +287,7 @@ export const checkEmployeeIdUnique = async (employeeId, orgId, excludeUserId = n
 export const validateUserExcelBeforeUpload = async (file) => {
   try {
     const { parseExcelFile, normalizeUserColumnNames, validateUserExcelData } = await import('../utils/excelParser');
-    
+
     const rawData = await parseExcelFile(file);
     const normalizedData = normalizeUserColumnNames(rawData);
     const validationResults = validateUserExcelData(normalizedData);
@@ -310,10 +311,10 @@ export const validateUserExcelBeforeUpload = async (file) => {
 export const processUserExcelUpload = async (file, orgId, adminUserId) => {
   try {
     const { parseExcelFile, normalizeUserColumnNames, validateUserExcelData, transformUserData } = await import('../utils/excelParser');
-    
+
     // 1. Parse Excel file
     const rawData = await parseExcelFile(file);
-    
+
     if (rawData.length === 0) {
       throw new Error('Excel file is empty');
     }

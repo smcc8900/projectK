@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { 
-  checkIn, 
-  checkOut, 
-  getTodayAttendance, 
-  isWithinGeofence 
+import {
+  checkIn,
+  checkOut,
+  getTodayAttendance,
+  isWithinGeofence
 } from '../../services/attendance.service';
 import toast from 'react-hot-toast';
-import { MapPin, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { MapPin, Clock, CheckCircle, XCircle, AlertCircle, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 
 export const AttendanceWidget = () => {
@@ -18,14 +18,19 @@ export const AttendanceWidget = () => {
   const [userLocation, setUserLocation] = useState(null);
   const [locationError, setLocationError] = useState(null);
   const [withinGeofence, setWithinGeofence] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     loadTodayAttendance();
   }, [currentUser, userClaims]);
 
   useEffect(() => {
-    // Get user's current location
+    refreshLocation();
+  }, [organization]);
+
+  const refreshLocation = () => {
     if (navigator.geolocation && organization?.geofenceLocation) {
+      setRefreshing(true);
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const location = {
@@ -33,7 +38,7 @@ export const AttendanceWidget = () => {
             longitude: position.coords.longitude,
           };
           setUserLocation(location);
-          
+
           // Check if within geofence
           const within = isWithinGeofence(
             location.latitude,
@@ -44,19 +49,22 @@ export const AttendanceWidget = () => {
           );
           setWithinGeofence(within);
           setLocationError(null);
+          setRefreshing(false);
+          if (refreshing) toast.success('Location updated');
         },
         (error) => {
           console.error('Error getting location:', error);
           setLocationError('Unable to access your location. Please enable location services.');
+          setRefreshing(false);
         }
       );
     }
-  }, [organization]);
+  };
 
   const loadTodayAttendance = async () => {
     try {
       if (!currentUser || !userClaims?.orgId) return;
-      
+
       const todayRecord = await getTodayAttendance(currentUser.uid, userClaims.orgId);
       setAttendance(todayRecord);
     } catch (error) {
@@ -151,6 +159,14 @@ export const AttendanceWidget = () => {
             Out of Range
           </span>
         )}
+        <button
+          onClick={refreshLocation}
+          disabled={refreshing}
+          className="p-1 rounded-full hover:bg-gray-100 text-gray-500 transition-colors"
+          title="Refresh Location"
+        >
+          <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-blue-600' : ''}`} />
+        </button>
       </div>
 
       {locationError && (
@@ -184,9 +200,8 @@ export const AttendanceWidget = () => {
             )}
             <div className="flex justify-between items-center pt-2 border-t border-gray-200">
               <span className="text-xs sm:text-sm text-gray-600">Status:</span>
-              <span className={`text-xs sm:text-sm font-semibold ${
-                isCheckedIn ? 'text-green-600' : isCheckedOut ? 'text-blue-600' : 'text-gray-600'
-              }`}>
+              <span className={`text-xs sm:text-sm font-semibold ${isCheckedIn ? 'text-green-600' : isCheckedOut ? 'text-blue-600' : 'text-gray-600'
+                }`}>
                 {isCheckedIn ? 'Checked In' : isCheckedOut ? 'Checked Out' : 'Not Checked In'}
               </span>
             </div>

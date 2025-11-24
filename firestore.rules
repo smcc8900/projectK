@@ -32,6 +32,12 @@ service cloud.firestore {
       allow write: if (isAdmin() && belongsToOrg(orgId)) || isSuperAdmin();
       // Super admins can delete any organization
       allow delete: if isSuperAdmin() || (isAdmin() && belongsToOrg(orgId));
+      
+      // Branches
+      match /branches/{branchId} {
+        allow read: if isAuthenticated() && (belongsToOrg(orgId) || isSuperAdmin());
+        allow write: if (isAdmin() && belongsToOrg(orgId)) || isSuperAdmin();
+      }
     }
     
     // Users

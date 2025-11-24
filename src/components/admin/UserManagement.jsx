@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { getUsers, createUser, updateUser, deactivateUser, activateUser, deleteUser } from '../../services/user.service';
+import { getBranches } from '../../services/branch.service';
 import { Table } from '../shared/Table';
 import { Modal } from '../shared/Modal';
 import { FileUploader } from '../shared/FileUploader';
@@ -11,6 +12,7 @@ import { UserPlus, Edit, UserX, UserCheck, Eye, EyeOff, Upload, FileSpreadsheet,
 export const UserManagement = () => {
   const { userClaims, currentUser } = useAuth();
   const [users, setUsers] = useState([]);
+  const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
@@ -28,18 +30,20 @@ export const UserManagement = () => {
     employeeId: '',
     department: '',
     designation: '',
+    designation: '',
     role: 'employee',
+    branchId: '',
     tempPassword: '',
   });
 
   // Generate unique employee ID based on name
   const generateEmployeeId = (firstName, lastName) => {
     if (!firstName || !lastName) return '';
-    
+
     const firstInitial = firstName.substring(0, 2).toUpperCase();
     const lastInitial = lastName.substring(0, 2).toUpperCase();
     const randomNum = Math.floor(1000 + Math.random() * 9000); // 4-digit random number
-    
+
     return `EMP${firstInitial}${lastInitial}${randomNum}`;
   };
 
@@ -62,8 +66,12 @@ export const UserManagement = () => {
         return;
       }
       setLoading(true);
-      const data = await getUsers(userClaims.orgId);
-      setUsers(data);
+      const [usersData, branchesData] = await Promise.all([
+        getUsers(userClaims.orgId),
+        getBranches(userClaims.orgId)
+      ]);
+      setUsers(usersData);
+      setBranches(branchesData);
     } catch (error) {
       console.error('Error loading users:', error);
       const errorMessage = error.message || 'Failed to load users';
@@ -79,7 +87,7 @@ export const UserManagement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     try {
       if (editingUser) {
         await updateUser(editingUser.id, {
@@ -91,13 +99,14 @@ export const UserManagement = () => {
             department: formData.department,
             designation: formData.designation,
           },
+          branchId: formData.branchId || null,
         });
         toast.success('User updated successfully');
       } else {
         await createUser(formData, userClaims.orgId);
         toast.success('User created successfully');
       }
-      
+
       closeModal();
       loadUsers();
     } catch (error) {
@@ -155,7 +164,9 @@ export const UserManagement = () => {
         employeeId: user.profile.employeeId,
         department: user.profile.department,
         designation: user.profile.designation,
+        designation: user.profile.designation,
         role: user.role,
+        branchId: user.branchId || '',
       });
     } else {
       setEditingUser(null);
@@ -167,7 +178,9 @@ export const UserManagement = () => {
         employeeId: '',
         department: '',
         designation: '',
+        designation: '',
         role: 'employee',
+        branchId: '',
         tempPassword: '',
       });
       setShowPassword(false);
@@ -191,7 +204,7 @@ export const UserManagement = () => {
         setUploadLoading(true);
         const results = await validateUserExcelBeforeUpload(file);
         setValidationResults(results);
-        
+
         if (results.invalidRows > 0) {
           toast.error(`Found ${results.invalidRows} invalid rows. Please review before uploading.`);
         } else {
@@ -216,14 +229,14 @@ export const UserManagement = () => {
         userClaims.orgId,
         currentUser.uid
       );
-      
+
       setUploadResults(results);
-      
+
       if (results.successCount > 0) {
         toast.success(`Successfully created ${results.successCount} users!`);
         loadUsers(); // Refresh user list
       }
-      
+
       if (results.failedCount > 0) {
         toast.error(`${results.failedCount} records failed. Check the error details below.`);
       }
@@ -267,11 +280,17 @@ export const UserManagement = () => {
       render: (row) => row.profile?.designation || 'N/A',
     },
     {
+      header: 'Branch',
+      render: (row) => {
+        const branch = branches.find(b => b.id === row.branchId);
+        return branch ? branch.name : 'N/A';
+      },
+    },
+    {
       header: 'Role',
       render: (row) => (
-        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-          row.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
-        }`}>
+        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${row.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
+          }`}>
           {row.role}
         </span>
       ),
@@ -279,9 +298,8 @@ export const UserManagement = () => {
     {
       header: 'Status',
       render: (row) => (
-        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-          row.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-        }`}>
+        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${row.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+          }`}>
           {row.isActive ? 'Active' : 'Inactive'}
         </span>
       ),
@@ -300,11 +318,10 @@ export const UserManagement = () => {
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); handleToggleStatus(row); }}
-            className={`p-1.5 sm:p-1 rounded transition-colors ${
-              row.isActive 
-                ? 'text-red-600 hover:text-red-900 active:bg-red-50' 
-                : 'text-green-600 hover:text-green-900 active:bg-green-50'
-            }`}
+            className={`p-1.5 sm:p-1 rounded transition-colors ${row.isActive
+              ? 'text-red-600 hover:text-red-900 active:bg-red-50'
+              : 'text-green-600 hover:text-green-900 active:bg-green-50'
+              }`}
             title={row.isActive ? 'Deactivate' : 'Activate'}
             aria-label={row.isActive ? 'Deactivate user' : 'Activate user'}
           >
@@ -532,11 +549,10 @@ export const UserManagement = () => {
                   </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); handleToggleStatus(user); }}
-                    className={`p-2 rounded-lg transition-colors ${
-                      user.isActive 
-                        ? 'text-red-600 hover:bg-red-50 active:bg-red-100' 
-                        : 'text-green-600 hover:bg-green-50 active:bg-green-100'
-                    }`}
+                    className={`p-2 rounded-lg transition-colors ${user.isActive
+                      ? 'text-red-600 hover:bg-red-50 active:bg-red-100'
+                      : 'text-green-600 hover:bg-green-50 active:bg-green-100'
+                      }`}
                     title={user.isActive ? 'Deactivate' : 'Activate'}
                     aria-label={user.isActive ? 'Deactivate user' : 'Activate user'}
                   >
@@ -552,7 +568,7 @@ export const UserManagement = () => {
                   </button>
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-3 pt-2 border-t border-gray-100">
                 <div>
                   <p className="text-xs text-gray-500">Department</p>
@@ -569,14 +585,12 @@ export const UserManagement = () => {
               </div>
 
               <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
-                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                  user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
-                }`}>
+                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
+                  }`}>
                   {user.role}
                 </span>
-                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                  user.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                }`}>
+                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${user.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                  }`}>
                   {user.isActive ? 'Active' : 'Inactive'}
                 </span>
               </div>
@@ -670,6 +684,20 @@ export const UserManagement = () => {
           </div>
 
           <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Branch</label>
+            <select
+              value={formData.branchId}
+              onChange={(e) => setFormData({ ...formData, branchId: e.target.value })}
+              className="block w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 min-h-[44px] sm:min-h-0"
+            >
+              <option value="">Select Branch (Optional)</option>
+              {branches.map(branch => (
+                <option key={branch.id} value={branch.id}>{branch.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">Role *</label>
             <select
               value={formData.role}
@@ -686,7 +714,7 @@ export const UserManagement = () => {
               </p>
             )}
           </div>
-          
+
           {!editingUser && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Temporary Password *</label>

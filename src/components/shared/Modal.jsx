@@ -13,31 +13,31 @@ export const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex items-end sm:items-center justify-center min-h-screen px-0 sm:px-4 pt-0 sm:pt-4 pb-0 sm:pb-20 text-center sm:block sm:p-0">
+      <div className="flex min-h-screen items-center justify-center p-4 text-center sm:p-0">
         {/* Backdrop */}
         <div
           className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75"
           onClick={onClose}
         />
 
-        {/* Modal - Full screen on mobile, centered on desktop */}
-        <div className={`inline-block align-bottom sm:align-middle bg-white rounded-t-2xl sm:rounded-lg text-left overflow-hidden shadow-xl transform transition-all w-full h-[90vh] sm:h-auto sm:max-h-[90vh] sm:my-8 ${sizeClasses[size]} flex flex-col`}>
-          {/* Header - Sticky on mobile */}
-          <div className="bg-white px-4 pt-4 pb-3 sm:px-6 sm:pt-5 sm:pb-4 border-b border-gray-200 flex-shrink-0">
+        {/* Modal */}
+        <div className={`relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 w-full ${sizeClasses[size]} flex flex-col max-h-[90vh]`}>
+          {/* Header */}
+          <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4 border-b border-gray-200 flex-shrink-0">
             <div className="flex items-center justify-between">
-              <h3 className="text-base sm:text-lg font-semibold text-gray-900 pr-2">{title}</h3>
+              <h3 className="text-lg font-medium leading-6 text-gray-900">{title}</h3>
               <button
                 onClick={onClose}
-                className="flex-shrink-0 text-gray-400 hover:text-gray-500 focus:outline-none p-1 -mr-1"
-                aria-label="Close"
+                className="rounded-md bg-white text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
               >
-                <X className="w-5 h-5 sm:w-6 sm:h-6" />
+                <span className="sr-only">Close</span>
+                <X className="h-6 w-6" aria-hidden="true" />
               </button>
             </div>
           </div>
 
-          {/* Content - Scrollable */}
-          <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6">
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto p-6">
             {children}
           </div>
         </div>

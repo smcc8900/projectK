@@ -26,7 +26,7 @@ export const Login = () => {
   useEffect(() => {
     const checkDomain = async () => {
       const currentDomain = getCurrentDomain();
-      
+
       if (currentDomain) {
         // On custom domain - restrict to this org only
         try {
@@ -40,7 +40,7 @@ export const Login = () => {
         }
       }
     };
-    
+
     checkDomain();
   }, []);
 
@@ -49,9 +49,9 @@ export const Login = () => {
     const fetchOrgName = async () => {
       // Skip if on custom domain (already set)
       if (allowedDomain) return;
-      
+
       const orgIdParam = searchParams.get('orgId');
-      
+
       if (orgIdParam) {
         try {
           const org = await getOrganization(orgIdParam);
@@ -67,7 +67,7 @@ export const Login = () => {
             const orgsRef = collection(db, 'organizations');
             const q = query(orgsRef, where('domain', '==', emailDomain));
             const snapshot = await getDocs(q);
-            
+
             if (!snapshot.empty) {
               const orgData = snapshot.docs[0].data();
               setOrgName(orgData.orgName || 'Payroll System');
@@ -108,12 +108,12 @@ export const Login = () => {
 
       // Attempt login
       const userCredential = await login(email, password);
-      
+
       // Get fresh token with claims
       const idTokenResult = await userCredential.user.getIdTokenResult(true);
       const userRole = idTokenResult.claims.role;
       const userOrgId = idTokenResult.claims.orgId;
-      
+
       // If on custom domain, verify user belongs to this organization
       // Exception: Super admins can login from any domain
       if (allowedDomain && domainOrg && userRole !== 'superadmin') {
@@ -128,9 +128,9 @@ export const Login = () => {
           return;
         }
       }
-      
+
       toast.success('Login successful!');
-      
+
       // If not superadmin, ensure organization is active
       if (userRole !== 'superadmin' && userOrgId) {
         try {
@@ -150,7 +150,7 @@ export const Login = () => {
           return;
         }
       }
-      
+
       // Redirect based on role from fresh token
       if (userRole === 'superadmin') {
         navigate('/superadmin/dashboard', { replace: true });
@@ -162,7 +162,7 @@ export const Login = () => {
     } catch (error) {
       // Show user-friendly error messages
       let errorMessage = 'Failed to login';
-      
+
       if (error.code === 'auth/user-not-found') {
         errorMessage = 'No account found with this email address.';
       } else if (error.code === 'auth/wrong-password') {
@@ -176,7 +176,7 @@ export const Login = () => {
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
+
       toast.error(errorMessage, { duration: 5000 });
     } finally {
       setLoading(false);
@@ -191,10 +191,10 @@ export const Login = () => {
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-indigo-400/20 rounded-full blur-3xl"></div>
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-purple-400/20 to-pink-400/20 rounded-full blur-3xl"></div>
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-br from-indigo-400/10 to-blue-400/10 rounded-full blur-3xl"></div>
-        
+
         {/* Grid pattern */}
         <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
-        
+
         {/* Floating shapes */}
         <div className="absolute top-20 left-20 w-16 h-16 bg-blue-400/10 rounded-lg rotate-12 animate-float"></div>
         <div className="absolute top-40 right-32 w-12 h-12 bg-purple-400/10 rounded-full animate-float-delayed"></div>
@@ -219,7 +219,7 @@ export const Login = () => {
             </div>
           </div>
         )}
-        
+
         {/* Error for unconfigured domain */}
         {domainError && (
           <div className="mb-4 bg-red-50 border-l-4 border-red-400 p-4 rounded-lg">
@@ -235,7 +235,7 @@ export const Login = () => {
             </div>
           </div>
         )}
-        
+
         <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-6 sm:p-8 md:p-10">
           <div className="text-center mb-6 sm:mb-8">
             {/* Logo/Icon */}
@@ -249,7 +249,7 @@ export const Login = () => {
               Sign in to your account
             </p>
           </div>
-          
+
           <form className="space-y-4 sm:space-y-5" onSubmit={handleSubmit}>
             <div className="space-y-3 sm:space-y-4">
               <div>
@@ -319,13 +319,6 @@ export const Login = () => {
               </p>
             </div>
           </form>
-        </div>
-        
-        {/* Additional info card */}
-        <div className="mt-6 text-center">
-          <p className="text-sm text-gray-600">
-            Secure payroll management system
-          </p>
         </div>
       </div>
     </div>
