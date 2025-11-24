@@ -1,6 +1,6 @@
 {
   "name": "enterprise-payroll-system",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "dependencies": {
     "@sendgrid/mail": "^8.1.6",
@@ -26,6 +26,28 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "version:patch": "npm version patch --no-git-tag-version",
+    "version:minor": "npm version minor --no-git-tag-version",
+    "version:major": "npm version major --no-git-tag-version",
+    "prepublishOnly": "npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/projectK.git"
+  },
+  "keywords": [
+    "payroll",
+    "saas",
+    "multi-tenant",
+    "react",
+    "firebase",
+    "enterprise"
+  ],
+  "author": "",
+  "license": "PROPRIETARY",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "restricted"
   }
 }
