@@ -88,15 +88,20 @@ jobs:
             echo "" >> CHANGELOG.md
           fi
           
-          # Insert new version entry after header
-          sed -i.bak "8a\\
-## [$VERSION] - $DATE\\
-\\
-### ${TYPE^}\\
-- Automated release\\
-\\
-" CHANGELOG.md
-          rm CHANGELOG.md.bak 2>/dev/null || true
+          # Create temporary file with new version entry
+          TEMP_FILE=$(mktemp)
+          echo "## [$VERSION] - $DATE" >> "$TEMP_FILE"
+          echo "" >> "$TEMP_FILE"
+          echo "### ${TYPE^}" >> "$TEMP_FILE"
+          echo "- Automated release" >> "$TEMP_FILE"
+          echo "" >> "$TEMP_FILE"
+          
+          # Insert after line 8 (after header)
+          head -n 8 CHANGELOG.md > "${TEMP_FILE}.new"
+          cat "$TEMP_FILE" >> "${TEMP_FILE}.new"
+          tail -n +9 CHANGELOG.md >> "${TEMP_FILE}.new" 2>/dev/null || true
+          mv "${TEMP_FILE}.new" CHANGELOG.md
+          rm -f "$TEMP_FILE"
 
       - name: Commit version bump
         run: |
