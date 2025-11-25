@@ -30,7 +30,6 @@ export const UserManagement = () => {
     employeeId: '',
     department: '',
     designation: '',
-    designation: '',
     role: 'employee',
     branchId: '',
     tempPassword: '',
@@ -164,7 +163,6 @@ export const UserManagement = () => {
         employeeId: user.profile.employeeId,
         department: user.profile.department,
         designation: user.profile.designation,
-        designation: user.profile.designation,
         role: user.role,
         branchId: user.branchId || '',
       });
@@ -177,7 +175,6 @@ export const UserManagement = () => {
         phoneNumber: '',
         employeeId: '',
         department: '',
-        designation: '',
         designation: '',
         role: 'employee',
         branchId: '',

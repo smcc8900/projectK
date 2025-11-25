@@ -78,19 +78,12 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Bump version (patch)
-        run: |
-          npm version patch --no-git-tag-version
-          git add package.json package-lock.json
-          git commit -m "chore: bump version [skip ci]" || exit 0
-          git push origin HEAD:${{ github.ref_name }} || exit 0
-
       - name: Check if version is already published
         run: |
           PACKAGE_NAME=$(node -p "require('./package.json').name")
-          NEW_VERSION=$(node -p "require('./package.json').version")
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
           
-          echo "New version after bump: $NEW_VERSION"
+          echo "Current version in package.json: $CURRENT_VERSION"
           
           # Try to get published version
           PUBLISHED_VERSION=$(npm view $PACKAGE_NAME version 2>/dev/null || echo "NOT_PUBLISHED")
@@ -105,26 +98,26 @@ jobs:
           # Compare versions using Node.js semver comparison
           COMPARE_RESULT=$(node -e "
             const semver = require('semver');
-            const newVersion = process.argv[1];
+            const current = process.argv[1];
             const published = process.argv[2];
-            if (semver.gt(newVersion, published)) {
+            if (semver.gt(current, published)) {
               console.log('NEWER');
-            } else if (semver.eq(newVersion, published)) {
+            } else if (semver.eq(current, published)) {
               console.log('EQUAL');
             } else {
               console.log('OLDER');
             }
-          " "$NEW_VERSION" "$PUBLISHED_VERSION")
+          " "$CURRENT_VERSION" "$PUBLISHED_VERSION")
           
           if [ "$COMPARE_RESULT" = "EQUAL" ]; then
-            echo "❌ ERROR: Version $NEW_VERSION is already published on npm"
+            echo "❌ ERROR: Version $CURRENT_VERSION is already published on npm"
             echo "Build failed because there is no version update"
             exit 1
           elif [ "$COMPARE_RESULT" = "NEWER" ]; then
-            echo "✅ New version ($NEW_VERSION) is newer than published ($PUBLISHED_VERSION), proceeding with publish"
+            echo "✅ Current version ($CURRENT_VERSION) is newer than published ($PUBLISHED_VERSION), proceeding with publish"
             exit 0
           else
-            echo "⚠️  WARNING: New version ($NEW_VERSION) is older than published ($PUBLISHED_VERSION)"
+            echo "⚠️  WARNING: Current version ($CURRENT_VERSION) is older than published ($PUBLISHED_VERSION)"
             echo "This should not happen. Failing build for safety."
             exit 1
           fi
