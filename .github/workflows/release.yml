@@ -24,6 +24,9 @@ on:
 jobs:
   build-and-version:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: read
     # Skip if commit message contains version bump (to avoid loops)
     if: "!contains(github.event.head_commit.message, 'chore: bump version')"
     
@@ -33,6 +36,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
+          persist-credentials: true
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -110,7 +114,7 @@ jobs:
           git add package.json package-lock.json CHANGELOG.md
           git commit -m "chore: bump version to ${{ env.NEW_VERSION }} [skip ci]" || exit 0
           git tag -a "v${{ env.NEW_VERSION }}" -m "Release v${{ env.NEW_VERSION }}"
-          git push origin main --follow-tags
+          git push origin HEAD:${{ github.ref_name }} --follow-tags
           git push origin "v${{ env.NEW_VERSION }}"
 
       - name: Create Release Artifacts
